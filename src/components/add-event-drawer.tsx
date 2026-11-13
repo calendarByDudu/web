@@ -9,6 +9,7 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { Spinner } from "@/components/ui/spinner"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "@/components/ui/toast"
@@ -31,6 +32,7 @@ import { cn } from "@/lib/utils"
 type AddEventDrawerProps = {
   open: boolean
   defaultDate: Date
+  userEmail: string
   event?: CalendarEvent | null
   onOpenChange: (open: boolean) => void
   onSave: (event: CalendarEvent) => void
@@ -52,6 +54,7 @@ const fieldClass =
 export function AddEventDrawer({
   open,
   defaultDate,
+  userEmail,
   event = null,
   onOpenChange,
   onSave,
@@ -156,6 +159,7 @@ export function AddEventDrawer({
           audience,
           category,
           color,
+          createdBy: event?.createdBy ?? userEmail.trim().toLowerCase(),
         },
         event?.id
       )
@@ -195,34 +199,37 @@ export function AddEventDrawer({
         <form
           id="add-event-form"
           onSubmit={handleSubmit}
-          className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-5 py-2"
+          className="min-h-0 shrink"
         >
-          <label className="block space-y-2">
-            <span className="text-sm font-medium text-muted-foreground">
-              Título <span className="text-destructive">*</span>
-            </span>
-            <input
-              autoFocus
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ex: Dentista"
-              aria-required
-              className={fieldClass}
-            />
-          </label>
+          {/* altura explícita: drawer cresce com conteúdo; flex-1 sozinho não trava o scroll */}
+          <ScrollArea className="h-[calc(92dvh-12rem)] max-h-[calc(92dvh-12rem)]">
+            <div className="flex flex-col gap-4 px-5 py-2">
+              <label className="block space-y-2">
+                <span className="text-sm font-medium text-muted-foreground">
+                  Título <span className="text-destructive">*</span>
+                </span>
+                <input
+                  autoFocus
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Ex: Dentista"
+                  aria-required
+                  className={fieldClass}
+                />
+              </label>
 
-          <label className="block space-y-2">
-            <span className="text-sm font-medium text-muted-foreground">
-              Data <span className="text-destructive">*</span>
-            </span>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              aria-required
-              className={cn(fieldClass, "appearance-none")}
-            />
-          </label>
+              <label className="block space-y-2">
+                <span className="text-sm font-medium text-muted-foreground">
+                  Data <span className="text-destructive">*</span>
+                </span>
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  aria-required
+                  className={cn(fieldClass, "appearance-none")}
+                />
+              </label>
 
           <fieldset className="space-y-2">
             <legend className="text-sm font-medium text-muted-foreground">
@@ -365,6 +372,8 @@ export function AddEventDrawer({
               ))}
             </div>
           </fieldset>
+            </div>
+          </ScrollArea>
         </form>
 
         <DrawerFooter className="gap-2 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">

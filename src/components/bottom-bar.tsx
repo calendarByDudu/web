@@ -24,7 +24,7 @@ const TABS: {
 
 export function BottomBar({ active, onTabChange, onAdd }: BottomBarProps) {
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-40 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-[430px] px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
       <div className="pointer-events-auto flex w-full max-w-full items-end gap-2">
         <nav
           className="relative flex h-16 min-w-0 flex-1 items-center rounded-full border border-border bg-card/95 p-1 shadow-lg backdrop-blur-md"

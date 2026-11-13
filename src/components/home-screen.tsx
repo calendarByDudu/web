@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { AddEventDrawer } from "@/components/add-event-drawer"
 import { AudienceFilter } from "@/components/audience-filter"
@@ -9,12 +9,16 @@ import { DaySummaryCard } from "@/components/day-summary-card"
 import { EventCard, EventStatCard } from "@/components/event-card"
 import { EventDetailDrawer } from "@/components/event-detail-drawer"
 import { MonthCalendar } from "@/components/month-calendar"
+import { CoupleDrawer } from "@/components/couple-drawer"
 import { ProfileScreen } from "@/components/profile-screen"
 import { WeekStrip } from "@/components/week-strip"
 import { Button } from "@/components/ui/button"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { toast } from "@/components/ui/toast"
 import {
+  EVENT_OWNER_SELF,
   MOCK_EVENTS,
+  canManageEvent,
   eventDayKey,
   eventsByDay,
   formatEventWhen,
@@ -22,6 +26,7 @@ import {
   type EventAudience,
 } from "@/lib/events"
 import type { AuthUser } from "@/lib/auth"
+import { getPartner, type CouplePartner } from "@/lib/couple"
 import { addDays, dayKey, startOfWeek } from "@/lib/dates"
 
 function formatHeader(d: Date) {
@@ -87,12 +92,24 @@ export function HomeScreen({
   const today = useMemo(() => new Date(), [])
   const [tab, setTab] = useState<BottomTab>("home")
   const [selected, setSelected] = useState(() => new Date(today))
-  const [events, setEvents] = useState(initialEvents)
+  const [events, setEvents] = useState(() =>
+    initialEvents.map((e) =>
+      e.createdBy === EVENT_OWNER_SELF
+        ? { ...e, createdBy: user.email.trim().toLowerCase() }
+        : e
+    )
+  )
   const [audienceFilter, setAudienceFilter] =
     useState<EventAudience>("couple")
   const [addOpen, setAddOpen] = useState(false)
   const [editing, setEditing] = useState<CalendarEvent | null>(null)
   const [detail, setDetail] = useState<CalendarEvent | null>(null)
+  const [coupleOpen, setCoupleOpen] = useState(false)
+  const [partner, setPartner] = useState<CouplePartner | null>(null)
+
+  useEffect(() => {
+    setPartner(getPartner(user.email))
+  }, [user.email])
 
   const visibleEvents = useMemo(
     () => events.filter((e) => e.audience === audienceFilter),
@@ -138,6 +155,7 @@ export function HomeScreen({
   }
 
   function handleDelete(event: CalendarEvent) {
+    if (!canManageEvent(event, user.email)) return
     setEvents((prev) => prev.filter((e) => e.id !== event.id))
     setDetail(null)
     toast.add({
@@ -149,13 +167,14 @@ export function HomeScreen({
   }
 
   function handleEdit(event: CalendarEvent) {
+    if (!canManageEvent(event, user.email)) return
     setDetail(null)
     setEditing(event)
     setAddOpen(true)
   }
 
   return (
-    <div className="relative flex min-h-dvh w-full flex-1 flex-col">
+    <div className="relative flex h-dvh max-h-dvh w-full flex-1 flex-col overflow-hidden">
       {tab === "home" && (
         <>
           <header className="flex items-center gap-1 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-2">
@@ -211,40 +230,49 @@ export function HomeScreen({
             />
           </div>
 
-          <section className="flex-1 space-y-3 overflow-y-auto px-4 pb-28">
-            <DaySummaryCard
-              events={selectedEvents}
-              nextLabel={nextEventLabel(selectedEvents, today)}
-            />
-
-            <div className="grid grid-cols-3 gap-2">
-              <EventStatCard label="Manhã" value={String(morning.length)} hint="até 12h" />
-              <EventStatCard label="Tarde" value={String(afternoon.length)} hint="12–18h" />
-              <EventStatCard label="Noite" value={String(night.length)} hint="após 18h" />
-            </div>
-
-            <div>
-              <h2 className="mb-2.5 px-0.5 text-sm font-medium text-muted-foreground">
-                Agenda
-              </h2>
-              <EventList
+          <ScrollArea className="min-h-0 flex-1">
+            <div className="space-y-3 px-4 pb-28">
+              <DaySummaryCard
                 events={selectedEvents}
-                onSelect={(ev) => setDetail(ev)}
+                nextLabel={nextEventLabel(selectedEvents, today)}
               />
+
+              <div className="grid grid-cols-3 gap-2">
+                <EventStatCard label="Manhã" value={String(morning.length)} hint="até 12h" />
+                <EventStatCard label="Tarde" value={String(afternoon.length)} hint="12–18h" />
+                <EventStatCard label="Noite" value={String(night.length)} hint="após 18h" />
+              </div>
+
+              <div>
+                <h2 className="mb-2.5 px-0.5 text-sm font-medium text-muted-foreground">
+                  Agenda
+                </h2>
+                <EventList
+                  events={selectedEvents}
+                  onSelect={(ev) => setDetail(ev)}
+                />
+              </div>
             </div>
-          </section>
+          </ScrollArea>
         </>
       )}
 
       {tab === "month" && (
-        <div className="flex flex-1 flex-col overflow-y-auto pb-28 pt-[max(0.5rem,env(safe-area-inset-top))]">
-          <div className="px-4 pb-2">
+        <div className="flex min-h-0 flex-1 flex-col pt-[max(0.5rem,env(safe-area-inset-top))]">
+          <div className="shrink-0 px-4 pb-2">
             <AudienceFilter
               value={audienceFilter}
               onChange={setAudienceFilter}
             />
           </div>
-          <MonthCalendar events={visibleEvents} />
+          <ScrollArea className="min-h-0 flex-1">
+            <div className="pb-28">
+              <MonthCalendar
+                events={visibleEvents}
+                onSelectEvent={(ev) => setDetail(ev)}
+              />
+            </div>
+          </ScrollArea>
         </div>
       )}
 
@@ -252,6 +280,8 @@ export function HomeScreen({
         <ProfileScreen
           name={user.name}
           email={user.email}
+          partnerName={partner?.name ?? null}
+          onCouple={() => setCoupleOpen(true)}
           onLogout={onLogout}
         />
       )}
@@ -268,6 +298,7 @@ export function HomeScreen({
       <EventDetailDrawer
         event={detail}
         open={Boolean(detail)}
+        userEmail={user.email}
         onOpenChange={(open) => {
           if (!open) setDetail(null)
         }}
@@ -278,12 +309,21 @@ export function HomeScreen({
       <AddEventDrawer
         open={addOpen}
         defaultDate={selected}
+        userEmail={user.email}
         event={editing}
         onOpenChange={(open) => {
           setAddOpen(open)
           if (!open) setEditing(null)
         }}
         onSave={handleSave}
+      />
+
+      <CoupleDrawer
+        open={coupleOpen}
+        onOpenChange={setCoupleOpen}
+        user={user}
+        events={events}
+        onPartnerChange={setPartner}
       />
     </div>
   )
