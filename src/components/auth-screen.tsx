@@ -28,7 +28,7 @@ type AuthScreenProps = {
 }
 
 const fieldClass =
-  "min-h-12 w-full rounded-2xl border-0 bg-secondary/80 px-4 py-3.5 text-base outline-none ring-0 placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring dark:bg-secondary/60"
+  "min-h-12 w-full rounded-2xl border border-transparent bg-secondary/80 px-4 py-3.5 text-base outline-none ring-0 placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/30 dark:bg-secondary/60"
 
 const titles: Record<AuthMode, { title: string; sub: string }> = {
   login: {
@@ -61,8 +61,14 @@ export function AuthScreen({ onAuth }: AuthScreenProps) {
   const [otp, setOtp] = useState("")
   const [busy, setBusy] = useState(false)
   const [otpInvalid, setOtpInvalid] = useState(false)
+  const [showErrors, setShowErrors] = useState(false)
 
   const copy = titles[mode]
+  const nameBad = showErrors && !name.trim()
+  const emailBad = showErrors && !email.trim()
+  const passwordBad =
+    showErrors &&
+    (!password || (mode !== "login" && password.length < 4))
 
   function showError(err: unknown) {
     toast.add({
@@ -70,9 +76,40 @@ export function AuthScreen({ onAuth }: AuthScreenProps) {
     })
   }
 
+  function fieldsOk() {
+    if (mode === "signup" && !name.trim()) return false
+    if (
+      (mode === "login" || mode === "signup" || mode === "forgot") &&
+      !email.trim()
+    ) {
+      return false
+    }
+    if (mode === "login" && !password) return false
+    if (
+      (mode === "signup" || mode === "reset") &&
+      password.length < 4
+    ) {
+      return false
+    }
+    return true
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (busy) return
+    if (!fieldsOk()) {
+      setShowErrors(true)
+      if (mode === "login") {
+        toast.add({
+          type: "error",
+          title: "Preencha e-mail e senha",
+          description: "Os dois campos são necessários pra entrar",
+          timeout: 3000,
+        })
+      }
+      return
+    }
+    setShowErrors(false)
     setOtpInvalid(false)
     setBusy(true)
     await new Promise((r) => setTimeout(r, 450))
@@ -116,6 +153,7 @@ export function AuthScreen({ onAuth }: AuthScreenProps) {
   function switchMode(next: AuthMode) {
     setMode(next)
     setOtpInvalid(false)
+    setShowErrors(false)
     setPassword("")
     setOtp("")
   }
@@ -148,7 +186,11 @@ export function AuthScreen({ onAuth }: AuthScreenProps) {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="mx-auto w-full max-w-sm space-y-3">
+      <form
+        noValidate
+        onSubmit={handleSubmit}
+        className="mx-auto w-full max-w-sm space-y-3"
+      >
         {mode === "signup" && (
           <label className="block space-y-1.5">
             <span className="px-1 text-sm font-medium">Nome</span>
@@ -158,7 +200,7 @@ export function AuthScreen({ onAuth }: AuthScreenProps) {
               onChange={(e) => setName(e.target.value)}
               autoComplete="name"
               placeholder="Como te chamam"
-              required
+              aria-invalid={nameBad || undefined}
             />
           </label>
         )}
@@ -173,7 +215,7 @@ export function AuthScreen({ onAuth }: AuthScreenProps) {
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="email"
               placeholder="voce@email.com"
-              required
+              aria-invalid={emailBad || undefined}
             />
           </label>
         )}
@@ -194,8 +236,7 @@ export function AuthScreen({ onAuth }: AuthScreenProps) {
               placeholder={
                 mode === "login" ? "••••••••" : "Mínimo 4 caracteres"
               }
-              required
-              minLength={mode === "login" ? undefined : 4}
+              aria-invalid={passwordBad || undefined}
             />
           </label>
         )}
