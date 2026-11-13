@@ -2,12 +2,12 @@
 
 import { useMemo, useState } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
+import { EventCard } from "@/components/event-card"
 import { Button } from "@/components/ui/button"
 import {
   EVENT_COLOR,
   MOCK_EVENTS,
   eventsByDay,
-  formatEventWhen,
   type CalendarEvent,
 } from "@/lib/events"
 import { cn } from "@/lib/utils"
@@ -78,8 +78,10 @@ const MAX_PILLS = 3
 
 export function MonthCalendar({
   events = MOCK_EVENTS,
+  onSelectEvent,
 }: {
   events?: CalendarEvent[]
+  onSelectEvent?: (event: CalendarEvent) => void
 }) {
   const today = useMemo(() => new Date(), [])
   const [month, setMonth] = useState(() => startOfMonth(today))
@@ -219,28 +221,18 @@ export function MonthCalendar({
       </div>
 
       <section className="border-t border-border px-3 py-3 sm:px-4">
-        <h2 className="text-sm font-medium capitalize text-muted-foreground">
+        <h2 className="mb-2.5 text-sm font-medium capitalize text-muted-foreground">
           {formatSelected(selected)}
         </h2>
         {selectedEvents.length === 0 ? (
-          <p className="mt-2 text-sm text-muted-foreground">Sem eventos</p>
+          <p className="rounded-[1.5rem] bg-secondary/50 px-4 py-10 text-center text-base text-muted-foreground">
+            Sem eventos neste dia
+          </p>
         ) : (
-          <ul className="mt-2 space-y-1.5">
+          <ul className="space-y-3">
             {selectedEvents.map((ev) => (
-              <li
-                key={ev.id}
-                className="flex items-center gap-2 rounded-lg bg-secondary/60 px-2.5 py-2"
-              >
-                <span
-                  className={cn(
-                    "size-2 shrink-0 rounded-full",
-                    EVENT_COLOR[ev.color].split(" ")[0]
-                  )}
-                />
-                <span className="min-w-12 shrink-0 text-xs tabular-nums text-muted-foreground">
-                  {formatEventWhen(ev)}
-                </span>
-                <span className="truncate text-sm">{ev.title}</span>
+              <li key={ev.id}>
+                <EventCard event={ev} onClick={onSelectEvent} />
               </li>
             ))}
           </ul>

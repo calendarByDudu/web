@@ -17,6 +17,7 @@ import {
   EVENT_AUDIENCE_LABEL,
   EVENT_CATEGORY_LABEL,
   EVENT_SOFT_DOT,
+  canManageEvent,
   formatEventDate,
   formatEventWhen,
   type CalendarEvent,
@@ -26,6 +27,7 @@ import { cn } from "@/lib/utils"
 type EventDetailDrawerProps = {
   event: CalendarEvent | null
   open: boolean
+  userEmail: string
   onOpenChange: (open: boolean) => void
   onEdit: (event: CalendarEvent) => void
   onDelete: (event: CalendarEvent) => void
@@ -34,12 +36,14 @@ type EventDetailDrawerProps = {
 export function EventDetailDrawer({
   event,
   open,
+  userEmail,
   onOpenChange,
   onEdit,
   onDelete,
 }: EventDetailDrawerProps) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const canManage = event ? canManageEvent(event, userEmail) : false
 
   useEffect(() => {
     if (!open) {
@@ -116,23 +120,31 @@ export function EventDetailDrawer({
               </div>
 
               <DrawerFooter className="gap-2 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
-                <Button
-                  type="button"
-                  className="h-14 w-full gap-2 rounded-full text-base font-semibold"
-                  onClick={() => onEdit(event)}
-                >
-                  <Pencil className="size-5" />
-                  Editar
-                </Button>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  className="h-14 w-full gap-2 rounded-full text-base font-semibold"
-                  onClick={() => setConfirmOpen(true)}
-                >
-                  <Trash2 className="size-5" />
-                  Excluir
-                </Button>
+                {canManage ? (
+                  <>
+                    <Button
+                      type="button"
+                      className="h-14 w-full gap-2 rounded-full text-base font-semibold"
+                      onClick={() => onEdit(event)}
+                    >
+                      <Pencil className="size-5" />
+                      Editar
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      className="h-14 w-full gap-2 rounded-full text-base font-semibold"
+                      onClick={() => setConfirmOpen(true)}
+                    >
+                      <Trash2 className="size-5" />
+                      Excluir
+                    </Button>
+                  </>
+                ) : (
+                  <p className="px-1 pb-1 text-center text-sm text-muted-foreground">
+                    Só quem criou pode editar ou excluir
+                  </p>
+                )}
               </DrawerFooter>
             </>
           ) : null}

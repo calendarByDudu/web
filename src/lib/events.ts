@@ -21,7 +21,12 @@ export type CalendarEvent = {
   audience: EventAudience
   category: EventCategory
   color: "blue" | "green" | "amber" | "rose" | "violet"
+  /** Email of who created it — only they edit/delete */
+  createdBy: string
 }
+
+/** Mock placeholder remapped to the logged-in user on boot */
+export const EVENT_OWNER_SELF = "self"
 
 export const EVENT_AUDIENCE_LABEL: Record<EventAudience, string> = {
   me: "Só eu",
@@ -61,6 +66,7 @@ export const MOCK_EVENTS: CalendarEvent[] = [
     audience: "me",
     category: "saude",
     color: "blue",
+    createdBy: EVENT_OWNER_SELF,
   },
   {
     id: "2",
@@ -71,6 +77,7 @@ export const MOCK_EVENTS: CalendarEvent[] = [
     audience: "couple",
     category: "restaurante",
     color: "rose",
+    createdBy: EVENT_OWNER_SELF,
   },
   {
     id: "3",
@@ -80,6 +87,7 @@ export const MOCK_EVENTS: CalendarEvent[] = [
     audience: "couple",
     category: "casa",
     color: "green",
+    createdBy: "parceiro@exemplo.com",
   },
   {
     id: "4",
@@ -90,6 +98,7 @@ export const MOCK_EVENTS: CalendarEvent[] = [
     audience: "couple",
     category: "trabalho",
     color: "amber",
+    createdBy: EVENT_OWNER_SELF,
   },
   {
     id: "5",
@@ -100,6 +109,7 @@ export const MOCK_EVENTS: CalendarEvent[] = [
     audience: "couple",
     category: "aniversario",
     color: "violet",
+    createdBy: "parceiro@exemplo.com",
   },
   {
     id: "6",
@@ -110,6 +120,7 @@ export const MOCK_EVENTS: CalendarEvent[] = [
     audience: "me",
     category: "saude",
     color: "blue",
+    createdBy: EVENT_OWNER_SELF,
   },
   {
     id: "7",
@@ -119,6 +130,7 @@ export const MOCK_EVENTS: CalendarEvent[] = [
     audience: "couple",
     category: "saidinha",
     color: "violet",
+    createdBy: EVENT_OWNER_SELF,
   },
 ]
 
@@ -202,6 +214,7 @@ export function createEvent(
     audience: EventAudience
     category: EventCategory
     color: CalendarEvent["color"]
+    createdBy: string
   },
   id = crypto.randomUUID()
 ): CalendarEvent {
@@ -218,6 +231,7 @@ export function createEvent(
       audience: input.audience,
       category: input.category,
       color: input.color,
+      createdBy: input.createdBy,
     }
   }
   return {
@@ -230,7 +244,12 @@ export function createEvent(
     audience: input.audience,
     category: input.category,
     color: input.color,
+    createdBy: input.createdBy,
   }
+}
+
+export function canManageEvent(event: CalendarEvent, email: string) {
+  return event.createdBy === email.trim().toLowerCase()
 }
 
 export function eventsByDay(events: CalendarEvent[]) {
