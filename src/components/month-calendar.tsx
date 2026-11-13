@@ -92,7 +92,14 @@ export function MonthCalendar({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <header className="flex items-center gap-2 px-3 py-3 sm:px-4">
+      <header className="flex items-center gap-2 px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 sm:px-4">
+        <img
+          src="/logo.svg"
+          alt=""
+          width={28}
+          height={28}
+          className="size-7 shrink-0 dark:invert"
+        />
         <h1 className="min-w-0 flex-1 truncate text-lg font-semibold tracking-tight capitalize sm:text-xl">
           {formatMonthTitle(month)}
         </h1>

@@ -146,13 +146,22 @@ export function HomeScreen({
       {tab === "home" && (
         <>
           <header className="flex items-center gap-1 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-2">
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-medium text-muted-foreground">
-                calendarByDudu
-              </p>
-              <h1 className="truncate text-xl font-semibold capitalize tracking-tight">
-                {formatHeader(selected)}
-              </h1>
+            <div className="flex min-w-0 flex-1 items-center gap-2.5">
+              <img
+                src="/logo.svg"
+                alt=""
+                width={32}
+                height={32}
+                className="size-8 shrink-0 dark:invert"
+              />
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-muted-foreground">
+                  calendarByDudu
+                </p>
+                <h1 className="truncate text-xl font-semibold capitalize tracking-tight">
+                  {formatHeader(selected)}
+                </h1>
+              </div>
             </div>
             <ThemeToggle />
             <Button
