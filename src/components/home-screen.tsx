@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { AddEventDrawer } from "@/components/add-event-drawer"
+import { AudienceFilter } from "@/components/audience-filter"
 import { BottomBar, type BottomTab } from "@/components/bottom-bar"
 import { DaySummaryCard } from "@/components/day-summary-card"
 import { EventCard, EventStatCard } from "@/components/event-card"
@@ -18,6 +19,7 @@ import {
   eventsByDay,
   formatEventWhen,
   type CalendarEvent,
+  type EventAudience,
 } from "@/lib/events"
 import { addDays, dayKey, startOfWeek } from "@/lib/dates"
 
@@ -81,11 +83,17 @@ export function HomeScreen({
   const [tab, setTab] = useState<BottomTab>("home")
   const [selected, setSelected] = useState(() => new Date(today))
   const [events, setEvents] = useState(initialEvents)
+  const [audienceFilter, setAudienceFilter] =
+    useState<EventAudience>("couple")
   const [addOpen, setAddOpen] = useState(false)
   const [editing, setEditing] = useState<CalendarEvent | null>(null)
   const [detail, setDetail] = useState<CalendarEvent | null>(null)
 
-  const byDay = useMemo(() => eventsByDay(events), [events])
+  const visibleEvents = useMemo(
+    () => events.filter((e) => e.audience === audienceFilter),
+    [events, audienceFilter]
+  )
+  const byDay = useMemo(() => eventsByDay(visibleEvents), [visibleEvents])
   const daysWithEvents = useMemo(() => new Set(byDay.keys()), [byDay])
   const selectedEvents = byDay.get(dayKey(selected)) ?? []
   const timedEvents = selectedEvents.filter((e) => !e.allDay)
@@ -186,7 +194,11 @@ export function HomeScreen({
             </Button>
           </header>
 
-          <div className="px-2 pb-3">
+          <div className="space-y-3 px-4 pb-3">
+            <AudienceFilter
+              value={audienceFilter}
+              onChange={setAudienceFilter}
+            />
             <WeekStrip
               selected={selected}
               today={today}
@@ -222,16 +234,13 @@ export function HomeScreen({
 
       {tab === "month" && (
         <div className="flex flex-1 flex-col overflow-y-auto pb-28 pt-[max(0.5rem,env(safe-area-inset-top))]">
-          <MonthCalendar events={events} />
-        </div>
-      )}
-
-      {tab === "couple" && (
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 pb-28 text-center">
-          <p className="text-lg font-medium">Nós</p>
-          <p className="text-base text-muted-foreground">
-            Agenda compartilhada. Login depois.
-          </p>
+          <div className="px-4 pb-2">
+            <AudienceFilter
+              value={audienceFilter}
+              onChange={setAudienceFilter}
+            />
+          </div>
+          <MonthCalendar events={visibleEvents} />
         </div>
       )}
 
