@@ -21,6 +21,7 @@ import {
   type CalendarEvent,
   type EventAudience,
 } from "@/lib/events"
+import type { AuthUser } from "@/lib/auth"
 import { addDays, dayKey, startOfWeek } from "@/lib/dates"
 
 function formatHeader(d: Date) {
@@ -75,8 +76,12 @@ function EventList({
 }
 
 export function HomeScreen({
+  user,
+  onLogout,
   initialEvents = MOCK_EVENTS,
 }: {
+  user: AuthUser
+  onLogout: () => void
   initialEvents?: CalendarEvent[]
 }) {
   const today = useMemo(() => new Date(), [])
@@ -243,7 +248,13 @@ export function HomeScreen({
         </div>
       )}
 
-      {tab === "profile" && <ProfileScreen />}
+      {tab === "profile" && (
+        <ProfileScreen
+          name={user.name}
+          email={user.email}
+          onLogout={onLogout}
+        />
+      )}
 
       <BottomBar
         active={tab}

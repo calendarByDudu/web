@@ -1,18 +1,23 @@
 "use client"
 
-import { ChevronRight, Moon, Sun, Users } from "lucide-react"
+import { ChevronRight, LogOut, Moon, Sun, Users } from "lucide-react"
 import { useTheme } from "@/components/theme-provider"
+import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
 
 type ProfileScreenProps = {
-  name?: string
+  name: string
+  email: string
   partnerName?: string | null
+  onLogout: () => void
 }
 
 export function ProfileScreen({
-  name = "Dudu",
+  name,
+  email,
   partnerName = null,
+  onLogout,
 }: ProfileScreenProps) {
   const { theme, toggleTheme } = useTheme()
   const initial = name.trim().charAt(0).toUpperCase() || "?"
@@ -45,7 +50,7 @@ export function ProfileScreen({
           </div>
           <div className="text-center">
             <p className="text-lg font-semibold tracking-tight">{name}</p>
-            <p className="text-sm text-muted-foreground">Conta pessoal</p>
+            <p className="truncate text-sm text-muted-foreground">{email}</p>
           </div>
         </section>
 
@@ -59,7 +64,7 @@ export function ProfileScreen({
               <p className="truncate text-sm text-muted-foreground">
                 {partnerName
                   ? `Com ${partnerName}`
-                  : "Convide sua esposa — login depois"}
+                  : "Convide sua esposa — em breve"}
               </p>
             </div>
             <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
@@ -90,6 +95,16 @@ export function ProfileScreen({
             />
           </div>
         </section>
+
+        <Button
+          type="button"
+          variant="outline"
+          className="h-12 w-full justify-center gap-2 rounded-2xl text-base"
+          onClick={onLogout}
+        >
+          <LogOut className="size-5" />
+          Sair
+        </Button>
 
         <p
           className={cn(
