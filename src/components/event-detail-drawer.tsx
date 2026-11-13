@@ -16,7 +16,6 @@ import { Spinner } from "@/components/ui/spinner"
 import {
   EVENT_AUDIENCE_LABEL,
   EVENT_CATEGORY_LABEL,
-  EVENT_SOFT_BG,
   EVENT_SOFT_DOT,
   formatEventDate,
   formatEventWhen,
@@ -76,18 +75,14 @@ export function EventDetailDrawer({
               </DrawerHeader>
 
               <div className="space-y-3 px-5 py-2">
-                <div
-                  className={cn(
-                    "rounded-[1.5rem] px-4 py-4",
-                    EVENT_SOFT_BG[event.color]
-                  )}
-                >
+                <div className="rounded-[1.5rem] border border-border bg-white px-4 py-4 shadow-sm dark:bg-card">
                   <div className="flex items-center gap-2">
                     <span
                       className={cn(
                         "size-3 shrink-0 rounded-full",
                         EVENT_SOFT_DOT[event.color]
                       )}
+                      aria-hidden
                     />
                     <p className="text-base font-medium capitalize">
                       {formatEventDate(event)}

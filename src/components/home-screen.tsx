@@ -9,7 +9,7 @@ import { DaySummaryCard } from "@/components/day-summary-card"
 import { EventCard, EventStatCard } from "@/components/event-card"
 import { EventDetailDrawer } from "@/components/event-detail-drawer"
 import { MonthCalendar } from "@/components/month-calendar"
-import { ThemeToggle } from "@/components/theme-toggle"
+import { ProfileScreen } from "@/components/profile-screen"
 import { WeekStrip } from "@/components/week-strip"
 import { Button } from "@/components/ui/button"
 import { toast } from "@/components/ui/toast"
@@ -171,7 +171,6 @@ export function HomeScreen({
                 </h1>
               </div>
             </div>
-            <ThemeToggle />
             <Button
               type="button"
               variant="ghost"
@@ -243,6 +242,8 @@ export function HomeScreen({
           <MonthCalendar events={visibleEvents} />
         </div>
       )}
+
+      {tab === "profile" && <ProfileScreen />}
 
       <BottomBar
         active={tab}

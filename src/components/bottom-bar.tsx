@@ -1,10 +1,10 @@
 "use client"
 
-import { CalendarDays, Home, Plus } from "lucide-react"
+import { CalendarDays, Home, Plus, User } from "lucide-react"
 import { motion } from "motion/react"
 import { cn } from "@/lib/utils"
 
-export type BottomTab = "home" | "month"
+export type BottomTab = "home" | "month" | "profile"
 
 type BottomBarProps = {
   active: BottomTab
@@ -19,6 +19,7 @@ const TABS: {
 }[] = [
   { id: "home", label: "Início", icon: Home },
   { id: "month", label: "Calendário", icon: CalendarDays },
+  { id: "profile", label: "Perfil", icon: User },
 ]
 
 export function BottomBar({ active, onTabChange, onAdd }: BottomBarProps) {
