@@ -1,5 +1,7 @@
+import { Badge } from "@/components/ui/badge"
 import {
-  EVENT_SOFT_BG,
+  EVENT_AUDIENCE_LABEL,
+  EVENT_CATEGORY_LABEL,
   EVENT_SOFT_DOT,
   formatEventWhen,
   type CalendarEvent,
@@ -16,10 +18,7 @@ export function EventCard({ event, onClick }: EventCardProps) {
     <button
       type="button"
       onClick={() => onClick?.(event)}
-      className={cn(
-        "w-full rounded-[1.5rem] px-4 py-4 text-left active:scale-[0.99]",
-        EVENT_SOFT_BG[event.color]
-      )}
+      className="w-full rounded-[1.5rem] border border-border bg-white px-4 py-4 text-left text-foreground shadow-sm active:scale-[0.99] dark:bg-card"
     >
       <div className="flex items-start gap-3">
         <span
@@ -27,6 +26,7 @@ export function EventCard({ event, onClick }: EventCardProps) {
             "mt-2 size-3 shrink-0 rounded-full",
             EVENT_SOFT_DOT[event.color]
           )}
+          aria-hidden
         />
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between gap-2">
@@ -37,8 +37,16 @@ export function EventCard({ event, onClick }: EventCardProps) {
               {formatEventWhen(event)}
             </time>
           </div>
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            <Badge variant="secondary">
+              {EVENT_CATEGORY_LABEL[event.category]}
+            </Badge>
+            <Badge variant="outline">
+              {EVENT_AUDIENCE_LABEL[event.audience]}
+            </Badge>
+          </div>
           {event.notes ? (
-            <p className="mt-1 truncate text-sm text-muted-foreground">
+            <p className="mt-1.5 truncate text-sm text-muted-foreground">
               {event.notes}
             </p>
           ) : null}

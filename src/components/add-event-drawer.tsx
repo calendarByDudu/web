@@ -13,12 +13,17 @@ import { Spinner } from "@/components/ui/spinner"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "@/components/ui/toast"
 import {
+  EVENT_AUDIENCE_LABEL,
+  EVENT_CATEGORIES,
+  EVENT_CATEGORY_LABEL,
   EVENT_COLORS,
   EVENT_SOFT_DOT,
   addMinutesToTime,
   createEvent,
   eventDayKey,
   type CalendarEvent,
+  type EventAudience,
+  type EventCategory,
 } from "@/lib/events"
 import { dayKey } from "@/lib/dates"
 import { cn } from "@/lib/utils"
@@ -60,6 +65,8 @@ export function AddEventDrawer({
     addMinutesToTime(defaultStartTime(), 60)
   )
   const [notes, setNotes] = useState("")
+  const [audience, setAudience] = useState<EventAudience>("couple")
+  const [category, setCategory] = useState<EventCategory>("saidinha")
   const [color, setColor] = useState<CalendarEvent["color"]>("blue")
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -80,6 +87,8 @@ export function AddEventDrawer({
           : addMinutesToTime(timeFromIso(event.startsAt), 60)
       )
       setNotes(event.notes ?? "")
+      setAudience(event.audience)
+      setCategory(event.category)
       setColor(event.color)
       setError(null)
       return
@@ -91,6 +100,8 @@ export function AddEventDrawer({
     setStartTime(start)
     setEndTime(addMinutesToTime(start, 60))
     setNotes("")
+    setAudience("couple")
+    setCategory("saidinha")
     setColor("blue")
     setError(null)
   }, [open, defaultDate, event])
@@ -142,6 +153,8 @@ export function AddEventDrawer({
           endTime,
           allDay,
           notes,
+          audience,
+          category,
           color,
         },
         event?.id
@@ -210,6 +223,63 @@ export function AddEventDrawer({
               className={cn(fieldClass, "appearance-none")}
             />
           </label>
+
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium text-muted-foreground">
+              Categoria
+            </legend>
+            <div className="flex flex-wrap gap-2">
+              {EVENT_CATEGORIES.map((option) => {
+                const selected = category === option
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => setCategory(option)}
+                    className={cn(
+                      "h-10 rounded-full px-3.5 text-sm font-medium transition-colors",
+                      selected
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary/80 text-muted-foreground dark:bg-secondary/60"
+                    )}
+                  >
+                    {EVENT_CATEGORY_LABEL[option]}
+                  </button>
+                )
+              })}
+            </div>
+          </fieldset>
+
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium text-muted-foreground">
+              Para quem
+            </legend>
+            <p className="text-xs text-muted-foreground">
+              Vocês dois veem o evento. Isso só marca se é pessoal ou do casal.
+            </p>
+            <div className="grid grid-cols-2 gap-2 rounded-2xl bg-secondary/80 p-1 dark:bg-secondary/60">
+              {(["me", "couple"] as const).map((option) => {
+                const selected = audience === option
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => setAudience(option)}
+                    className={cn(
+                      "h-12 rounded-xl text-base font-medium transition-colors",
+                      selected
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    {EVENT_AUDIENCE_LABEL[option]}
+                  </button>
+                )
+              })}
+            </div>
+          </fieldset>
 
           <div className="flex min-h-14 items-center justify-between rounded-2xl bg-secondary/80 px-4 py-3 dark:bg-secondary/60">
             <div>

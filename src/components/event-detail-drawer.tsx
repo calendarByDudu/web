@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Pencil, Trash2 } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Drawer,
@@ -13,6 +14,8 @@ import {
 } from "@/components/ui/drawer"
 import { Spinner } from "@/components/ui/spinner"
 import {
+  EVENT_AUDIENCE_LABEL,
+  EVENT_CATEGORY_LABEL,
   EVENT_SOFT_BG,
   EVENT_SOFT_DOT,
   formatEventDate,
@@ -93,6 +96,14 @@ export function EventDetailDrawer({
                   <p className="mt-2 text-base tabular-nums text-muted-foreground">
                     {formatEventWhen(event)}
                   </p>
+                  <div className="mt-2.5 flex flex-wrap gap-1.5">
+                    <Badge variant="secondary">
+                      {EVENT_CATEGORY_LABEL[event.category]}
+                    </Badge>
+                    <Badge variant="outline">
+                      {EVENT_AUDIENCE_LABEL[event.audience]}
+                    </Badge>
+                  </div>
                 </div>
 
                 {event.notes ? (

@@ -1,3 +1,16 @@
+/** Who the event is for — both partners still see every event */
+export type EventAudience = "me" | "couple"
+
+export type EventCategory =
+  | "saidinha"
+  | "restaurante"
+  | "aniversario"
+  | "saude"
+  | "trabalho"
+  | "casa"
+  | "viagem"
+  | "outro"
+
 export type CalendarEvent = {
   id: string
   title: string
@@ -5,10 +18,39 @@ export type CalendarEvent = {
   endsAt?: string
   allDay?: boolean
   notes?: string
+  audience: EventAudience
+  category: EventCategory
   color: "blue" | "green" | "amber" | "rose" | "violet"
 }
 
-/** ponytail: mock until DB exists */
+export const EVENT_AUDIENCE_LABEL: Record<EventAudience, string> = {
+  me: "Só eu",
+  couple: "Casal",
+}
+
+export const EVENT_CATEGORY_LABEL: Record<EventCategory, string> = {
+  saidinha: "Saidinha",
+  restaurante: "Restaurante",
+  aniversario: "Aniversário",
+  saude: "Saúde",
+  trabalho: "Trabalho",
+  casa: "Casa",
+  viagem: "Viagem",
+  outro: "Outro",
+}
+
+export const EVENT_CATEGORIES = [
+  "saidinha",
+  "restaurante",
+  "aniversario",
+  "saude",
+  "trabalho",
+  "casa",
+  "viagem",
+  "outro",
+] as const satisfies readonly EventCategory[]
+
+/** ponytail: mock until DB exists — both still visible to everyone */
 export const MOCK_EVENTS: CalendarEvent[] = [
   {
     id: "1",
@@ -16,6 +58,8 @@ export const MOCK_EVENTS: CalendarEvent[] = [
     startsAt: "2026-11-13T09:00:00",
     endsAt: "2026-11-13T10:00:00",
     notes: "Consulta de rotina",
+    audience: "me",
+    category: "saude",
     color: "blue",
   },
   {
@@ -24,6 +68,8 @@ export const MOCK_EVENTS: CalendarEvent[] = [
     startsAt: "2026-11-13T19:30:00",
     endsAt: "2026-11-13T21:00:00",
     notes: "Com a familia",
+    audience: "couple",
+    category: "restaurante",
     color: "rose",
   },
   {
@@ -31,6 +77,8 @@ export const MOCK_EVENTS: CalendarEvent[] = [
     title: "Mercado",
     startsAt: "2026-11-15T10:00:00",
     endsAt: "2026-11-15T11:00:00",
+    audience: "couple",
+    category: "casa",
     color: "green",
   },
   {
@@ -39,6 +87,8 @@ export const MOCK_EVENTS: CalendarEvent[] = [
     startsAt: "2026-11-18T18:00:00",
     endsAt: "2026-11-18T19:00:00",
     notes: "Sala 2",
+    audience: "couple",
+    category: "trabalho",
     color: "amber",
   },
   {
@@ -47,6 +97,8 @@ export const MOCK_EVENTS: CalendarEvent[] = [
     startsAt: "2026-11-22T00:00:00",
     endsAt: "2026-11-22T23:59:59",
     allDay: true,
+    audience: "couple",
+    category: "aniversario",
     color: "violet",
   },
   {
@@ -55,6 +107,8 @@ export const MOCK_EVENTS: CalendarEvent[] = [
     startsAt: "2026-11-14T07:00:00",
     endsAt: "2026-11-14T08:00:00",
     notes: "Treino A",
+    audience: "me",
+    category: "saude",
     color: "blue",
   },
   {
@@ -62,6 +116,8 @@ export const MOCK_EVENTS: CalendarEvent[] = [
     title: "Cinema",
     startsAt: "2026-11-14T20:00:00",
     endsAt: "2026-11-14T22:30:00",
+    audience: "couple",
+    category: "saidinha",
     color: "violet",
   },
 ]
@@ -143,6 +199,8 @@ export function createEvent(
     endTime: string // HH:mm
     allDay?: boolean
     notes?: string
+    audience: EventAudience
+    category: EventCategory
     color: CalendarEvent["color"]
   },
   id = crypto.randomUUID()
@@ -157,6 +215,8 @@ export function createEvent(
       endsAt: `${input.date}T23:59:59`,
       allDay: true,
       notes: notes || undefined,
+      audience: input.audience,
+      category: input.category,
       color: input.color,
     }
   }
@@ -167,6 +227,8 @@ export function createEvent(
     endsAt: `${input.date}T${input.endTime}:00`,
     allDay: false,
     notes: notes || undefined,
+    audience: input.audience,
+    category: input.category,
     color: input.color,
   }
 }
