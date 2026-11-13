@@ -1,0 +1,3747 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "calendarByDudu API",
+    "version": "0.1.0",
+    "description": "Contrato HTTP espelhando o front atual (auth, casal, eventos). Sessão via Bearer JWT. Datas em ISO-8601 local sem timezone (yyyy-MM-ddTHH:mm:ss), igual ao cliente."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3001/v1",
+      "description": "Dev local"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Auth"
+    },
+    {
+      "name": "Couple"
+    },
+    {
+      "name": "Events"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "examples": [
+                  "VALIDATION_ERROR",
+                  "UNAUTHORIZED",
+                  "FORBIDDEN",
+                  "NOT_FOUND",
+                  "CONFLICT",
+                  "INVALID_CREDENTIALS",
+                  "INVALID_OTP",
+                  "OTP_EXPIRED",
+                  "ALREADY_LINKED",
+                  "INVITE_NOT_FOUND",
+                  "OWN_INVITE"
+                ]
+              },
+              "message": {
+                "type": "string",
+                "description": "Mensagem em pt-BR para toast/UI"
+              }
+            }
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "email"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          }
+        }
+      },
+      "AuthTokens": {
+        "type": "object",
+        "required": [
+          "accessToken",
+          "user"
+        ],
+        "properties": {
+          "accessToken": {
+            "type": "string"
+          },
+          "user": {
+            "type": "object",
+            "required": [
+              "id",
+              "name",
+              "email"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              }
+            }
+          }
+        }
+      },
+      "SignupRequest": {
+        "type": "object",
+        "required": [
+          "name",
+          "email",
+          "password"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 4,
+            "description": "Front atual exige mín. 4"
+          }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "ForgotPasswordRequest": {
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          }
+        }
+      },
+      "VerifyOtpRequest": {
+        "type": "object",
+        "required": [
+          "email",
+          "code"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^[0-9]{6}$",
+            "description": "OTP de 6 dígitos enviado por e-mail"
+          }
+        }
+      },
+      "ResetPasswordRequest": {
+        "type": "object",
+        "required": [
+          "email",
+          "code",
+          "password"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^[0-9]{6}$"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 4
+          }
+        }
+      },
+      "Partner": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "email"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          }
+        }
+      },
+      "CoupleInvite": {
+        "type": "object",
+        "required": [
+          "code",
+          "createdAt",
+          "expiresAt"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^[A-HJ-NP-Z2-9]{6}$",
+            "description": "6 chars A-Z/2-9 sem I/O/0/1 (igual ao front)"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CoupleStatus": {
+        "type": "object",
+        "required": [
+          "linked"
+        ],
+        "properties": {
+          "linked": {
+            "type": "boolean"
+          },
+          "partner": {
+            "oneOf": [
+              {
+                "type": "object",
+                "required": [
+                  "id",
+                  "name",
+                  "email"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pendingInvite": {
+            "oneOf": [
+              {
+                "type": "object",
+                "required": [
+                  "code",
+                  "createdAt",
+                  "expiresAt"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "pattern": "^[A-HJ-NP-Z2-9]{6}$",
+                    "description": "6 chars A-Z/2-9 sem I/O/0/1 (igual ao front)"
+                  },
+                  "createdAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "expiresAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stats": {
+            "type": "object",
+            "description": "Agregados visíveis ao usuário (espelha o drawer Casal)",
+            "properties": {
+              "total": {
+                "type": "integer",
+                "description": "Eventos criados (visíveis) — label UI: Criados"
+              },
+              "together": {
+                "type": "integer",
+                "description": "audience === couple"
+              },
+              "mine": {
+                "type": "integer",
+                "description": "audience === me do usuário atual"
+              }
+            }
+          }
+        }
+      },
+      "AcceptInviteRequest": {
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 6,
+            "maxLength": 6
+          }
+        }
+      },
+      "EventAudience": {
+        "type": "string",
+        "enum": [
+          "me",
+          "couple"
+        ],
+        "description": "me = só o criador vê; couple = ambos do vínculo veem. UI: Só eu / Casal."
+      },
+      "EventCategory": {
+        "type": "string",
+        "enum": [
+          "saidinha",
+          "restaurante",
+          "aniversario",
+          "saude",
+          "trabalho",
+          "casa",
+          "viagem",
+          "outro"
+        ]
+      },
+      "EventColor": {
+        "type": "string",
+        "enum": [
+          "blue",
+          "green",
+          "amber",
+          "rose",
+          "violet"
+        ]
+      },
+      "Event": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "startsAt",
+          "audience",
+          "category",
+          "color",
+          "createdBy",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "startsAt": {
+            "type": "string",
+            "description": "ISO local yyyy-MM-ddTHH:mm:ss",
+            "examples": [
+              "2026-11-13T19:30:00"
+            ]
+          },
+          "endsAt": {
+            "type": "string",
+            "description": "ISO local yyyy-MM-ddTHH:mm:ss"
+          },
+          "allDay": {
+            "type": "boolean",
+            "default": false
+          },
+          "notes": {
+            "type": "string"
+          },
+          "audience": {
+            "type": "string",
+            "enum": [
+              "me",
+              "couple"
+            ],
+            "description": "me = só o criador vê; couple = ambos do vínculo veem. UI: Só eu / Casal."
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "saidinha",
+              "restaurante",
+              "aniversario",
+              "saude",
+              "trabalho",
+              "casa",
+              "viagem",
+              "outro"
+            ]
+          },
+          "color": {
+            "type": "string",
+            "enum": [
+              "blue",
+              "green",
+              "amber",
+              "rose",
+              "violet"
+            ]
+          },
+          "createdBy": {
+            "type": "string",
+            "format": "email",
+            "description": "E-mail do criador. Só ele pode PATCH/DELETE."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "EventCreateRequest": {
+        "type": "object",
+        "required": [
+          "title",
+          "startsAt",
+          "audience",
+          "category",
+          "color"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "startsAt": {
+            "type": "string"
+          },
+          "endsAt": {
+            "type": "string"
+          },
+          "allDay": {
+            "type": "boolean",
+            "default": false
+          },
+          "notes": {
+            "type": "string"
+          },
+          "audience": {
+            "type": "string",
+            "enum": [
+              "me",
+              "couple"
+            ],
+            "description": "me = só o criador vê; couple = ambos do vínculo veem. UI: Só eu / Casal."
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "saidinha",
+              "restaurante",
+              "aniversario",
+              "saude",
+              "trabalho",
+              "casa",
+              "viagem",
+              "outro"
+            ]
+          },
+          "color": {
+            "type": "string",
+            "enum": [
+              "blue",
+              "green",
+              "amber",
+              "rose",
+              "violet"
+            ]
+          }
+        }
+      },
+      "EventUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "startsAt": {
+            "type": "string"
+          },
+          "endsAt": {
+            "type": "string"
+          },
+          "allDay": {
+            "type": "boolean"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "audience": {
+            "type": "string",
+            "enum": [
+              "me",
+              "couple"
+            ],
+            "description": "me = só o criador vê; couple = ambos do vínculo veem. UI: Só eu / Casal."
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "saidinha",
+              "restaurante",
+              "aniversario",
+              "saude",
+              "trabalho",
+              "casa",
+              "viagem",
+              "outro"
+            ]
+          },
+          "color": {
+            "type": "string",
+            "enum": [
+              "blue",
+              "green",
+              "amber",
+              "rose",
+              "violet"
+            ]
+          }
+        }
+      },
+      "EventListResponse": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "title",
+                "startsAt",
+                "audience",
+                "category",
+                "color",
+                "createdBy",
+                "createdAt",
+                "updatedAt"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "title": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "startsAt": {
+                  "type": "string",
+                  "description": "ISO local yyyy-MM-ddTHH:mm:ss",
+                  "examples": [
+                    "2026-11-13T19:30:00"
+                  ]
+                },
+                "endsAt": {
+                  "type": "string",
+                  "description": "ISO local yyyy-MM-ddTHH:mm:ss"
+                },
+                "allDay": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "notes": {
+                  "type": "string"
+                },
+                "audience": {
+                  "type": "string",
+                  "enum": [
+                    "me",
+                    "couple"
+                  ],
+                  "description": "me = só o criador vê; couple = ambos do vínculo veem. UI: Só eu / Casal."
+                },
+                "category": {
+                  "type": "string",
+                  "enum": [
+                    "saidinha",
+                    "restaurante",
+                    "aniversario",
+                    "saude",
+                    "trabalho",
+                    "casa",
+                    "viagem",
+                    "outro"
+                  ]
+                },
+                "color": {
+                  "type": "string",
+                  "enum": [
+                    "blue",
+                    "green",
+                    "amber",
+                    "rose",
+                    "violet"
+                  ]
+                },
+                "createdBy": {
+                  "type": "string",
+                  "format": "email",
+                  "description": "E-mail do criador. Só ele pode PATCH/DELETE."
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Validação",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "required": [
+                "error"
+              ],
+              "properties": {
+                "error": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "examples": [
+                        "VALIDATION_ERROR",
+                        "UNAUTHORIZED",
+                        "FORBIDDEN",
+                        "NOT_FOUND",
+                        "CONFLICT",
+                        "INVALID_CREDENTIALS",
+                        "INVALID_OTP",
+                        "OTP_EXPIRED",
+                        "ALREADY_LINKED",
+                        "INVITE_NOT_FOUND",
+                        "OWN_INVITE"
+                      ]
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "Mensagem em pt-BR para toast/UI"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Sem token ou token inválido",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "required": [
+                "error"
+              ],
+              "properties": {
+                "error": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "examples": [
+                        "VALIDATION_ERROR",
+                        "UNAUTHORIZED",
+                        "FORBIDDEN",
+                        "NOT_FOUND",
+                        "CONFLICT",
+                        "INVALID_CREDENTIALS",
+                        "INVALID_OTP",
+                        "OTP_EXPIRED",
+                        "ALREADY_LINKED",
+                        "INVITE_NOT_FOUND",
+                        "OWN_INVITE"
+                      ]
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "Mensagem em pt-BR para toast/UI"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Sem permissão (ex.: editar evento de outro)",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "required": [
+                "error"
+              ],
+              "properties": {
+                "error": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "examples": [
+                        "VALIDATION_ERROR",
+                        "UNAUTHORIZED",
+                        "FORBIDDEN",
+                        "NOT_FOUND",
+                        "CONFLICT",
+                        "INVALID_CREDENTIALS",
+                        "INVALID_OTP",
+                        "OTP_EXPIRED",
+                        "ALREADY_LINKED",
+                        "INVITE_NOT_FOUND",
+                        "OWN_INVITE"
+                      ]
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "Mensagem em pt-BR para toast/UI"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Recurso não encontrado",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "required": [
+                "error"
+              ],
+              "properties": {
+                "error": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "examples": [
+                        "VALIDATION_ERROR",
+                        "UNAUTHORIZED",
+                        "FORBIDDEN",
+                        "NOT_FOUND",
+                        "CONFLICT",
+                        "INVALID_CREDENTIALS",
+                        "INVALID_OTP",
+                        "OTP_EXPIRED",
+                        "ALREADY_LINKED",
+                        "INVITE_NOT_FOUND",
+                        "OWN_INVITE"
+                      ]
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "Mensagem em pt-BR para toast/UI"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "Conflict": {
+        "description": "Conflito de estado",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "required": [
+                "error"
+              ],
+              "properties": {
+                "error": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "examples": [
+                        "VALIDATION_ERROR",
+                        "UNAUTHORIZED",
+                        "FORBIDDEN",
+                        "NOT_FOUND",
+                        "CONFLICT",
+                        "INVALID_CREDENTIALS",
+                        "INVALID_OTP",
+                        "OTP_EXPIRED",
+                        "ALREADY_LINKED",
+                        "INVITE_NOT_FOUND",
+                        "OWN_INVITE"
+                      ]
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "Mensagem em pt-BR para toast/UI"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/auth/signup": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Criar conta",
+        "operationId": "signup",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "email",
+                  "password"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 4,
+                    "description": "Front atual exige mín. 4"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Conta criada e sessão iniciada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "accessToken",
+                    "user"
+                  ],
+                  "properties": {
+                    "accessToken": {
+                      "type": "string"
+                    },
+                    "user": {
+                      "type": "object",
+                      "required": [
+                        "id",
+                        "name",
+                        "email"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "name": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "email": {
+                          "type": "string",
+                          "format": "email"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "examples": [
+                            "VALIDATION_ERROR",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "INVALID_CREDENTIALS",
+                            "INVALID_OTP",
+                            "OTP_EXPIRED",
+                            "ALREADY_LINKED",
+                            "INVITE_NOT_FOUND",
+                            "OWN_INVITE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Mensagem em pt-BR para toast/UI"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "E-mail já cadastrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "examples": [
+                            "VALIDATION_ERROR",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "INVALID_CREDENTIALS",
+                            "INVALID_OTP",
+                            "OTP_EXPIRED",
+                            "ALREADY_LINKED",
+                            "INVITE_NOT_FOUND",
+                            "OWN_INVITE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Mensagem em pt-BR para toast/UI"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Entrar",
+        "operationId": "login",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "password"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "accessToken",
+                    "user"
+                  ],
+                  "properties": {
+                    "accessToken": {
+                      "type": "string"
+                    },
+                    "user": {
+                      "type": "object",
+                      "required": [
+                        "id",
+                        "name",
+                        "email"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "name": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "email": {
+                          "type": "string",
+                          "format": "email"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "examples": [
+                            "VALIDATION_ERROR",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "INVALID_CREDENTIALS",
+                            "INVALID_OTP",
+                            "OTP_EXPIRED",
+                            "ALREADY_LINKED",
+                            "INVITE_NOT_FOUND",
+                            "OWN_INVITE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Mensagem em pt-BR para toast/UI"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "E-mail ou senha inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "examples": [
+                            "VALIDATION_ERROR",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "INVALID_CREDENTIALS",
+                            "INVALID_OTP",
+                            "OTP_EXPIRED",
+                            "ALREADY_LINKED",
+                            "INVITE_NOT_FOUND",
+                            "OWN_INVITE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Mensagem em pt-BR para toast/UI"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Sair",
+        "operationId": "logout",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Sessão encerrada"
+          },
+          "401": {
+            "description": "Sem token ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "examples": [
+                            "VALIDATION_ERROR",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "INVALID_CREDENTIALS",
+                            "INVALID_OTP",
+                            "OTP_EXPIRED",
+                            "ALREADY_LINKED",
+                            "INVITE_NOT_FOUND",
+                            "OWN_INVITE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Mensagem em pt-BR para toast/UI"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Usuário da sessão",
+        "operationId": "getMe",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "name",
+                    "email"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "name": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "email": {
+                      "type": "string",
+                      "format": "email"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem token ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "examples": [
+                            "VALIDATION_ERROR",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "INVALID_CREDENTIALS",
+                            "INVALID_OTP",
+                            "OTP_EXPIRED",
+                            "ALREADY_LINKED",
+                            "INVITE_NOT_FOUND",
+                            "OWN_INVITE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Mensagem em pt-BR para toast/UI"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/password/forgot": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Pedir OTP de reset",
+        "operationId": "forgotPassword",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Sempre 204 se o e-mail for válido sintaticamente (não vazar se existe conta)"
+          },
+          "400": {
+            "description": "Validação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "examples": [
+                            "VALIDATION_ERROR",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "INVALID_CREDENTIALS",
+                            "INVALID_OTP",
+                            "OTP_EXPIRED",
+                            "ALREADY_LINKED",
+                            "INVITE_NOT_FOUND",
+                            "OWN_INVITE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Mensagem em pt-BR para toast/UI"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/password/verify-otp": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Validar OTP de reset",
+        "operationId": "verifyPasswordOtp",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "code"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "code": {
+                    "type": "string",
+                    "pattern": "^[0-9]{6}$",
+                    "description": "OTP de 6 dígitos enviado por e-mail"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "OTP válido"
+          },
+          "400": {
+            "description": "Validação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "examples": [
+                            "VALIDATION_ERROR",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "INVALID_CREDENTIALS",
+                            "INVALID_OTP",
+                            "OTP_EXPIRED",
+                            "ALREADY_LINKED",
+                            "INVITE_NOT_FOUND",
+                            "OWN_INVITE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Mensagem em pt-BR para toast/UI"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "OTP inválido ou expirado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "examples": [
+                            "VALIDATION_ERROR",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "INVALID_CREDENTIALS",
+                            "INVALID_OTP",
+                            "OTP_EXPIRED",
+                            "ALREADY_LINKED",
+                            "INVITE_NOT_FOUND",
+                            "OWN_INVITE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Mensagem em pt-BR para toast/UI"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/password/reset": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Definir nova senha com OTP",
+        "operationId": "resetPassword",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "code",
+                  "password"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "code": {
+                    "type": "string",
+                    "pattern": "^[0-9]{6}$"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 4
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Senha atualizada"
+          },
+          "400": {
+            "description": "Validação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "examples": [
+                            "VALIDATION_ERROR",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "INVALID_CREDENTIALS",
+                            "INVALID_OTP",
+                            "OTP_EXPIRED",
+                            "ALREADY_LINKED",
+                            "INVITE_NOT_FOUND",
+                            "OWN_INVITE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Mensagem em pt-BR para toast/UI"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "OTP inválido ou expirado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "examples": [
+                            "VALIDATION_ERROR",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "INVALID_CREDENTIALS",
+                            "INVALID_OTP",
+                            "OTP_EXPIRED",
+                            "ALREADY_LINKED",
+                            "INVITE_NOT_FOUND",
+                            "OWN_INVITE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Mensagem em pt-BR para toast/UI"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "examples": [
+                            "VALIDATION_ERROR",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "INVALID_CREDENTIALS",
+                            "INVALID_OTP",
+                            "OTP_EXPIRED",
+                            "ALREADY_LINKED",
+                            "INVITE_NOT_FOUND",
+                            "OWN_INVITE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Mensagem em pt-BR para toast/UI"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/couple": {
+      "get": {
+        "tags": [
+          "Couple"
+        ],
+        "summary": "Status do vínculo + convite pendente + stats",
+        "operationId": "getCouple",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "linked"
+                  ],
+                  "properties": {
+                    "linked": {
+                      "type": "boolean"
+                    },
+                    "partner": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "id",
+                            "name",
+                            "email"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "email": {
+                              "type": "string",
+                              "format": "email"
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "pendingInvite": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "code",
+                            "createdAt",
+                            "expiresAt"
+                          ],
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "pattern": "^[A-HJ-NP-Z2-9]{6}$",
+                              "description": "6 chars A-Z/2-9 sem I/O/0/1 (igual ao front)"
+                            },
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "expiresAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "stats": {
+                      "type": "object",
+                      "description": "Agregados visíveis ao usuário (espelha o drawer Casal)",
+                      "properties": {
+                        "total": {
+                          "type": "integer",
+                          "description": "Eventos criados (visíveis) — label UI: Criados"
+                        },
+                        "together": {
+                          "type": "integer",
+                          "description": "audience === couple"
+                        },
+                        "mine": {
+                          "type": "integer",
+                          "description": "audience === me do usuário atual"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem token ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "examples": [
+                            "VALIDATION_ERROR",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "INVALID_CREDENTIALS",
+                            "INVALID_OTP",
+                            "OTP_EXPIRED",
+                            "ALREADY_LINKED",
+                            "INVITE_NOT_FOUND",
+                            "OWN_INVITE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Mensagem em pt-BR para toast/UI"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Couple"
+        ],
+        "summary": "Remover vínculo",
+        "description": "Qualquer um dos dois pode desvincular. Eventos permanecem.",
+        "operationId": "unlinkCouple",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Vínculo removido"
+          },
+          "401": {
+            "description": "Sem token ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "examples": [
+                            "VALIDATION_ERROR",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "INVALID_CREDENTIALS",
+                            "INVALID_OTP",
+                            "OTP_EXPIRED",
+                            "ALREADY_LINKED",
+                            "INVITE_NOT_FOUND",
+                            "OWN_INVITE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Mensagem em pt-BR para toast/UI"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Sem vínculo",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "examples": [
+                            "VALIDATION_ERROR",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "INVALID_CREDENTIALS",
+                            "INVALID_OTP",
+                            "OTP_EXPIRED",
+                            "ALREADY_LINKED",
+                            "INVITE_NOT_FOUND",
+                            "OWN_INVITE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Mensagem em pt-BR para toast/UI"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/couple/invites": {
+      "post": {
+        "tags": [
+          "Couple"
+        ],
+        "summary": "Gerar ou reutilizar código de convite",
+        "operationId": "createCoupleInvite",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Convite ativo (idempotente se já existir pendente)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "createdAt",
+                    "expiresAt"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "pattern": "^[A-HJ-NP-Z2-9]{6}$",
+                      "description": "6 chars A-Z/2-9 sem I/O/0/1 (igual ao front)"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem token ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "examples": [
+                            "VALIDATION_ERROR",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "INVALID_CREDENTIALS",
+                            "INVALID_OTP",
+                            "OTP_EXPIRED",
+                            "ALREADY_LINKED",
+                            "INVITE_NOT_FOUND",
+                            "OWN_INVITE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Mensagem em pt-BR para toast/UI"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Já vinculado (ALREADY_LINKED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "examples": [
+                            "VALIDATION_ERROR",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "INVALID_CREDENTIALS",
+                            "INVALID_OTP",
+                            "OTP_EXPIRED",
+                            "ALREADY_LINKED",
+                            "INVITE_NOT_FOUND",
+                            "OWN_INVITE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Mensagem em pt-BR para toast/UI"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Couple"
+        ],
+        "summary": "Cancelar convite pendente",
+        "operationId": "cancelCoupleInvite",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Convite cancelado (idempotente)"
+          },
+          "401": {
+            "description": "Sem token ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "examples": [
+                            "VALIDATION_ERROR",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "INVALID_CREDENTIALS",
+                            "INVALID_OTP",
+                            "OTP_EXPIRED",
+                            "ALREADY_LINKED",
+                            "INVITE_NOT_FOUND",
+                            "OWN_INVITE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Mensagem em pt-BR para toast/UI"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/couple/invites/accept": {
+      "post": {
+        "tags": [
+          "Couple"
+        ],
+        "summary": "Aceitar código de convite",
+        "operationId": "acceptCoupleInvite",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "code"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "minLength": 6,
+                    "maxLength": 6
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Vinculado; retorna status completo",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "linked"
+                  ],
+                  "properties": {
+                    "linked": {
+                      "type": "boolean"
+                    },
+                    "partner": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "id",
+                            "name",
+                            "email"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "email": {
+                              "type": "string",
+                              "format": "email"
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "pendingInvite": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "code",
+                            "createdAt",
+                            "expiresAt"
+                          ],
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "pattern": "^[A-HJ-NP-Z2-9]{6}$",
+                              "description": "6 chars A-Z/2-9 sem I/O/0/1 (igual ao front)"
+                            },
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "expiresAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "stats": {
+                      "type": "object",
+                      "description": "Agregados visíveis ao usuário (espelha o drawer Casal)",
+                      "properties": {
+                        "total": {
+                          "type": "integer",
+                          "description": "Eventos criados (visíveis) — label UI: Criados"
+                        },
+                        "together": {
+                          "type": "integer",
+                          "description": "audience === couple"
+                        },
+                        "mine": {
+                          "type": "integer",
+                          "description": "audience === me do usuário atual"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "examples": [
+                            "VALIDATION_ERROR",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "INVALID_CREDENTIALS",
+                            "INVALID_OTP",
+                            "OTP_EXPIRED",
+                            "ALREADY_LINKED",
+                            "INVITE_NOT_FOUND",
+                            "OWN_INVITE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Mensagem em pt-BR para toast/UI"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem token ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "examples": [
+                            "VALIDATION_ERROR",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "INVALID_CREDENTIALS",
+                            "INVALID_OTP",
+                            "OTP_EXPIRED",
+                            "ALREADY_LINKED",
+                            "INVITE_NOT_FOUND",
+                            "OWN_INVITE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Mensagem em pt-BR para toast/UI"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Código não encontrado (INVITE_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "examples": [
+                            "VALIDATION_ERROR",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "INVALID_CREDENTIALS",
+                            "INVALID_OTP",
+                            "OTP_EXPIRED",
+                            "ALREADY_LINKED",
+                            "INVITE_NOT_FOUND",
+                            "OWN_INVITE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Mensagem em pt-BR para toast/UI"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "ALREADY_LINKED ou OWN_INVITE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "examples": [
+                            "VALIDATION_ERROR",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "INVALID_CREDENTIALS",
+                            "INVALID_OTP",
+                            "OTP_EXPIRED",
+                            "ALREADY_LINKED",
+                            "INVITE_NOT_FOUND",
+                            "OWN_INVITE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Mensagem em pt-BR para toast/UI"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/events": {
+      "get": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Listar eventos visíveis ao usuário",
+        "description": "Inclui eventos couple do vínculo + eventos me do próprio usuário.",
+        "operationId": "listEvents",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "audience",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "me",
+                "couple"
+              ],
+              "description": "me = só o criador vê; couple = ambos do vínculo veem. UI: Só eu / Casal."
+            },
+            "description": "Filtro opcional (UI Casal / Só eu)"
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Início do intervalo (yyyy-MM-dd), inclusivo"
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Fim do intervalo (yyyy-MM-dd), inclusivo"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "items"
+                  ],
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "id",
+                          "title",
+                          "startsAt",
+                          "audience",
+                          "category",
+                          "color",
+                          "createdBy",
+                          "createdAt",
+                          "updatedAt"
+                        ],
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "title": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "startsAt": {
+                            "type": "string",
+                            "description": "ISO local yyyy-MM-ddTHH:mm:ss",
+                            "examples": [
+                              "2026-11-13T19:30:00"
+                            ]
+                          },
+                          "endsAt": {
+                            "type": "string",
+                            "description": "ISO local yyyy-MM-ddTHH:mm:ss"
+                          },
+                          "allDay": {
+                            "type": "boolean",
+                            "default": false
+                          },
+                          "notes": {
+                            "type": "string"
+                          },
+                          "audience": {
+                            "type": "string",
+                            "enum": [
+                              "me",
+                              "couple"
+                            ],
+                            "description": "me = só o criador vê; couple = ambos do vínculo veem. UI: Só eu / Casal."
+                          },
+                          "category": {
+                            "type": "string",
+                            "enum": [
+                              "saidinha",
+                              "restaurante",
+                              "aniversario",
+                              "saude",
+                              "trabalho",
+                              "casa",
+                              "viagem",
+                              "outro"
+                            ]
+                          },
+                          "color": {
+                            "type": "string",
+                            "enum": [
+                              "blue",
+                              "green",
+                              "amber",
+                              "rose",
+                              "violet"
+                            ]
+                          },
+                          "createdBy": {
+                            "type": "string",
+                            "format": "email",
+                            "description": "E-mail do criador. Só ele pode PATCH/DELETE."
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem token ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "examples": [
+                            "VALIDATION_ERROR",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "INVALID_CREDENTIALS",
+                            "INVALID_OTP",
+                            "OTP_EXPIRED",
+                            "ALREADY_LINKED",
+                            "INVITE_NOT_FOUND",
+                            "OWN_INVITE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Mensagem em pt-BR para toast/UI"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Criar evento",
+        "description": "createdBy = usuário autenticado.",
+        "operationId": "createEvent",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "title",
+                  "startsAt",
+                  "audience",
+                  "category",
+                  "color"
+                ],
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "startsAt": {
+                    "type": "string"
+                  },
+                  "endsAt": {
+                    "type": "string"
+                  },
+                  "allDay": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "notes": {
+                    "type": "string"
+                  },
+                  "audience": {
+                    "type": "string",
+                    "enum": [
+                      "me",
+                      "couple"
+                    ],
+                    "description": "me = só o criador vê; couple = ambos do vínculo veem. UI: Só eu / Casal."
+                  },
+                  "category": {
+                    "type": "string",
+                    "enum": [
+                      "saidinha",
+                      "restaurante",
+                      "aniversario",
+                      "saude",
+                      "trabalho",
+                      "casa",
+                      "viagem",
+                      "outro"
+                    ]
+                  },
+                  "color": {
+                    "type": "string",
+                    "enum": [
+                      "blue",
+                      "green",
+                      "amber",
+                      "rose",
+                      "violet"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Criado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "title",
+                    "startsAt",
+                    "audience",
+                    "category",
+                    "color",
+                    "createdBy",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "title": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "startsAt": {
+                      "type": "string",
+                      "description": "ISO local yyyy-MM-ddTHH:mm:ss",
+                      "examples": [
+                        "2026-11-13T19:30:00"
+                      ]
+                    },
+                    "endsAt": {
+                      "type": "string",
+                      "description": "ISO local yyyy-MM-ddTHH:mm:ss"
+                    },
+                    "allDay": {
+                      "type": "boolean",
+                      "default": false
+                    },
+                    "notes": {
+                      "type": "string"
+                    },
+                    "audience": {
+                      "type": "string",
+                      "enum": [
+                        "me",
+                        "couple"
+                      ],
+                      "description": "me = só o criador vê; couple = ambos do vínculo veem. UI: Só eu / Casal."
+                    },
+                    "category": {
+                      "type": "string",
+                      "enum": [
+                        "saidinha",
+                        "restaurante",
+                        "aniversario",
+                        "saude",
+                        "trabalho",
+                        "casa",
+                        "viagem",
+                        "outro"
+                      ]
+                    },
+                    "color": {
+                      "type": "string",
+                      "enum": [
+                        "blue",
+                        "green",
+                        "amber",
+                        "rose",
+                        "violet"
+                      ]
+                    },
+                    "createdBy": {
+                      "type": "string",
+                      "format": "email",
+                      "description": "E-mail do criador. Só ele pode PATCH/DELETE."
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "examples": [
+                            "VALIDATION_ERROR",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "INVALID_CREDENTIALS",
+                            "INVALID_OTP",
+                            "OTP_EXPIRED",
+                            "ALREADY_LINKED",
+                            "INVITE_NOT_FOUND",
+                            "OWN_INVITE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Mensagem em pt-BR para toast/UI"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem token ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "examples": [
+                            "VALIDATION_ERROR",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "INVALID_CREDENTIALS",
+                            "INVALID_OTP",
+                            "OTP_EXPIRED",
+                            "ALREADY_LINKED",
+                            "INVITE_NOT_FOUND",
+                            "OWN_INVITE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Mensagem em pt-BR para toast/UI"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/events/{eventId}": {
+      "parameters": [
+        {
+          "name": "eventId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Detalhe do evento",
+        "operationId": "getEvent",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "title",
+                    "startsAt",
+                    "audience",
+                    "category",
+                    "color",
+                    "createdBy",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "title": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "startsAt": {
+                      "type": "string",
+                      "description": "ISO local yyyy-MM-ddTHH:mm:ss",
+                      "examples": [
+                        "2026-11-13T19:30:00"
+                      ]
+                    },
+                    "endsAt": {
+                      "type": "string",
+                      "description": "ISO local yyyy-MM-ddTHH:mm:ss"
+                    },
+                    "allDay": {
+                      "type": "boolean",
+                      "default": false
+                    },
+                    "notes": {
+                      "type": "string"
+                    },
+                    "audience": {
+                      "type": "string",
+                      "enum": [
+                        "me",
+                        "couple"
+                      ],
+                      "description": "me = só o criador vê; couple = ambos do vínculo veem. UI: Só eu / Casal."
+                    },
+                    "category": {
+                      "type": "string",
+                      "enum": [
+                        "saidinha",
+                        "restaurante",
+                        "aniversario",
+                        "saude",
+                        "trabalho",
+                        "casa",
+                        "viagem",
+                        "outro"
+                      ]
+                    },
+                    "color": {
+                      "type": "string",
+                      "enum": [
+                        "blue",
+                        "green",
+                        "amber",
+                        "rose",
+                        "violet"
+                      ]
+                    },
+                    "createdBy": {
+                      "type": "string",
+                      "format": "email",
+                      "description": "E-mail do criador. Só ele pode PATCH/DELETE."
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem token ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "examples": [
+                            "VALIDATION_ERROR",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "INVALID_CREDENTIALS",
+                            "INVALID_OTP",
+                            "OTP_EXPIRED",
+                            "ALREADY_LINKED",
+                            "INVITE_NOT_FOUND",
+                            "OWN_INVITE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Mensagem em pt-BR para toast/UI"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão (ex.: editar evento de outro)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "examples": [
+                            "VALIDATION_ERROR",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "INVALID_CREDENTIALS",
+                            "INVALID_OTP",
+                            "OTP_EXPIRED",
+                            "ALREADY_LINKED",
+                            "INVITE_NOT_FOUND",
+                            "OWN_INVITE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Mensagem em pt-BR para toast/UI"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "examples": [
+                            "VALIDATION_ERROR",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "INVALID_CREDENTIALS",
+                            "INVALID_OTP",
+                            "OTP_EXPIRED",
+                            "ALREADY_LINKED",
+                            "INVITE_NOT_FOUND",
+                            "OWN_INVITE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Mensagem em pt-BR para toast/UI"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Atualizar evento",
+        "description": "Só o criador (createdBy).",
+        "operationId": "updateEvent",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "startsAt": {
+                    "type": "string"
+                  },
+                  "endsAt": {
+                    "type": "string"
+                  },
+                  "allDay": {
+                    "type": "boolean"
+                  },
+                  "notes": {
+                    "type": "string"
+                  },
+                  "audience": {
+                    "type": "string",
+                    "enum": [
+                      "me",
+                      "couple"
+                    ],
+                    "description": "me = só o criador vê; couple = ambos do vínculo veem. UI: Só eu / Casal."
+                  },
+                  "category": {
+                    "type": "string",
+                    "enum": [
+                      "saidinha",
+                      "restaurante",
+                      "aniversario",
+                      "saude",
+                      "trabalho",
+                      "casa",
+                      "viagem",
+                      "outro"
+                    ]
+                  },
+                  "color": {
+                    "type": "string",
+                    "enum": [
+                      "blue",
+                      "green",
+                      "amber",
+                      "rose",
+                      "violet"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Atualizado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "title",
+                    "startsAt",
+                    "audience",
+                    "category",
+                    "color",
+                    "createdBy",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "title": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "startsAt": {
+                      "type": "string",
+                      "description": "ISO local yyyy-MM-ddTHH:mm:ss",
+                      "examples": [
+                        "2026-11-13T19:30:00"
+                      ]
+                    },
+                    "endsAt": {
+                      "type": "string",
+                      "description": "ISO local yyyy-MM-ddTHH:mm:ss"
+                    },
+                    "allDay": {
+                      "type": "boolean",
+                      "default": false
+                    },
+                    "notes": {
+                      "type": "string"
+                    },
+                    "audience": {
+                      "type": "string",
+                      "enum": [
+                        "me",
+                        "couple"
+                      ],
+                      "description": "me = só o criador vê; couple = ambos do vínculo veem. UI: Só eu / Casal."
+                    },
+                    "category": {
+                      "type": "string",
+                      "enum": [
+                        "saidinha",
+                        "restaurante",
+                        "aniversario",
+                        "saude",
+                        "trabalho",
+                        "casa",
+                        "viagem",
+                        "outro"
+                      ]
+                    },
+                    "color": {
+                      "type": "string",
+                      "enum": [
+                        "blue",
+                        "green",
+                        "amber",
+                        "rose",
+                        "violet"
+                      ]
+                    },
+                    "createdBy": {
+                      "type": "string",
+                      "format": "email",
+                      "description": "E-mail do criador. Só ele pode PATCH/DELETE."
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "examples": [
+                            "VALIDATION_ERROR",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "INVALID_CREDENTIALS",
+                            "INVALID_OTP",
+                            "OTP_EXPIRED",
+                            "ALREADY_LINKED",
+                            "INVITE_NOT_FOUND",
+                            "OWN_INVITE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Mensagem em pt-BR para toast/UI"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem token ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "examples": [
+                            "VALIDATION_ERROR",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "INVALID_CREDENTIALS",
+                            "INVALID_OTP",
+                            "OTP_EXPIRED",
+                            "ALREADY_LINKED",
+                            "INVITE_NOT_FOUND",
+                            "OWN_INVITE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Mensagem em pt-BR para toast/UI"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão (ex.: editar evento de outro)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "examples": [
+                            "VALIDATION_ERROR",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "INVALID_CREDENTIALS",
+                            "INVALID_OTP",
+                            "OTP_EXPIRED",
+                            "ALREADY_LINKED",
+                            "INVITE_NOT_FOUND",
+                            "OWN_INVITE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Mensagem em pt-BR para toast/UI"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "examples": [
+                            "VALIDATION_ERROR",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "INVALID_CREDENTIALS",
+                            "INVALID_OTP",
+                            "OTP_EXPIRED",
+                            "ALREADY_LINKED",
+                            "INVITE_NOT_FOUND",
+                            "OWN_INVITE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Mensagem em pt-BR para toast/UI"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Excluir evento",
+        "description": "Só o criador (createdBy).",
+        "operationId": "deleteEvent",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Excluído"
+          },
+          "401": {
+            "description": "Sem token ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "examples": [
+                            "VALIDATION_ERROR",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "INVALID_CREDENTIALS",
+                            "INVALID_OTP",
+                            "OTP_EXPIRED",
+                            "ALREADY_LINKED",
+                            "INVITE_NOT_FOUND",
+                            "OWN_INVITE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Mensagem em pt-BR para toast/UI"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão (ex.: editar evento de outro)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "examples": [
+                            "VALIDATION_ERROR",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "INVALID_CREDENTIALS",
+                            "INVALID_OTP",
+                            "OTP_EXPIRED",
+                            "ALREADY_LINKED",
+                            "INVITE_NOT_FOUND",
+                            "OWN_INVITE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Mensagem em pt-BR para toast/UI"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "examples": [
+                            "VALIDATION_ERROR",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "INVALID_CREDENTIALS",
+                            "INVALID_OTP",
+                            "OTP_EXPIRED",
+                            "ALREADY_LINKED",
+                            "INVITE_NOT_FOUND",
+                            "OWN_INVITE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Mensagem em pt-BR para toast/UI"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
