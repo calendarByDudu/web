@@ -5,7 +5,11 @@ import { AnimatePresence, motion } from "motion/react"
 import { AuthScreen } from "@/components/auth-screen"
 import { HomeScreen } from "@/components/home-screen"
 import { SplashScreen } from "@/components/splash-screen"
-import { clearSession, getSession, type AuthUser } from "@/lib/auth"
+import {
+  clearSession,
+  restoreSession,
+  type AuthUser,
+} from "@/lib/auth"
 
 const ease = [0.22, 1, 0.36, 1] as const
 
@@ -15,8 +19,8 @@ export function AppBoot() {
   const [phase, setPhase] = useState<Phase>("splash")
   const [user, setUser] = useState<AuthUser | null>(null)
 
-  const finishSplash = useCallback(() => {
-    const session = getSession()
+  const finishSplash = useCallback(async () => {
+    const session = await restoreSession()
     if (session) {
       setUser(session)
       setPhase("app")
