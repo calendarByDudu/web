@@ -1,126 +1,249 @@
 export type AuthUser = {
+  id?: string
   name: string
   email: string
 }
 
-type StoredAccount = AuthUser & { password: string }
+const TOKEN_KEY = "cbd-token"
+const REFRESH_TOKEN_KEY = "cbd-refresh-token"
 
-const USERS_KEY = "cbd-users"
-const SESSION_KEY = "cbd-session"
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/v1"
 
-function readUsers(): StoredAccount[] {
-  if (typeof window === "undefined") return []
+type ApiErrorBody = {
+  error?: { code?: string; message?: string }
+}
+
+function apiUrl(path: string) {
+  return `${API_URL.replace(/\/$/, "")}${path}`
+}
+
+async function readApiError(res: Response): Promise<string> {
   try {
-    const raw = localStorage.getItem(USERS_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw) as StoredAccount[]
-    return Array.isArray(parsed) ? parsed : []
+    const body = (await res.json()) as ApiErrorBody
+    if (body.error?.message) return body.error.message
   } catch {
-    return []
+    // ignore non-JSON
   }
+  return "Algo deu errado"
 }
 
-function writeUsers(users: StoredAccount[]) {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users))
-}
-
-export function getSession(): AuthUser | null {
+function getToken(): string | null {
   if (typeof window === "undefined") return null
+  return localStorage.getItem(TOKEN_KEY)
+}
+
+function getRefreshToken(): string | null {
+  if (typeof window === "undefined") return null
+  return localStorage.getItem(REFRESH_TOKEN_KEY)
+}
+
+function setTokens(token: string, refreshToken: string) {
+  localStorage.setItem(TOKEN_KEY, token)
+  localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
+}
+
+export function clearSession() {
+  localStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem(REFRESH_TOKEN_KEY)
+}
+
+export function hasSession(): boolean {
+  return Boolean(getToken())
+}
+
+let refreshInFlight: Promise<boolean> | null = null
+
+async function refreshAccessToken(): Promise<boolean> {
+  const refreshToken = getRefreshToken()
+  if (!refreshToken) return false
+
+  const res = await fetch(apiUrl("/auth/refresh"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refreshToken }),
+  })
+  if (!res.ok) return false
+
+  const data = (await res.json()) as {
+    accessToken?: string
+    refreshToken?: string
+  }
+  if (!data.accessToken) return false
+
+  setTokens(data.accessToken, data.refreshToken ?? refreshToken)
+  return true
+}
+
+function refreshOnce(): Promise<boolean> {
+  if (!refreshInFlight) {
+    refreshInFlight = refreshAccessToken().finally(() => {
+      refreshInFlight = null
+    })
+  }
+  return refreshInFlight
+}
+
+/** Fetch autenticado: 401 → refresh uma vez → retry. */
+export async function apiFetch(
+  path: string,
+  init: RequestInit = {}
+): Promise<Response> {
+  const headers = new Headers(init.headers)
+  const token = getToken()
+  if (token) headers.set("Authorization", `Bearer ${token}`)
+
+  const res = await fetch(apiUrl(path), { ...init, headers })
+  if (res.status !== 401) return res
+
+  const refreshed = await refreshOnce()
+  if (!refreshed) {
+    clearSession()
+    return res
+  }
+
+  const retryHeaders = new Headers(init.headers)
+  const next = getToken()
+  if (next) retryHeaders.set("Authorization", `Bearer ${next}`)
+  return fetch(apiUrl(path), { ...init, headers: retryHeaders })
+}
+
+export async function fetchMe(): Promise<AuthUser> {
+  if (!getToken() && !getRefreshToken()) throw new Error("Sem sessão")
+
+  const res = await apiFetch("/auth/me")
+  if (!res.ok) {
+    throw new Error(await readApiError(res))
+  }
+  const user = (await res.json()) as AuthUser
+  if (!user?.email || !user?.name) {
+    throw new Error("Perfil inválido")
+  }
+  return user
+}
+
+/** Boot: tokens locais → /me (com refresh se access expirou). */
+export async function restoreSession(): Promise<AuthUser | null> {
+  if (!getToken() && !getRefreshToken()) return null
   try {
-    const raw = localStorage.getItem(SESSION_KEY)
-    if (!raw) return null
-    const user = JSON.parse(raw) as AuthUser
-    if (!user?.email || !user?.name) return null
-    return user
+    return await fetchMe()
   } catch {
+    clearSession()
     return null
   }
 }
 
-export function clearSession() {
-  localStorage.removeItem(SESSION_KEY)
+async function acceptTokensAndFetchMe(data: {
+  accessToken?: string
+  refreshToken?: string
+}): Promise<AuthUser> {
+  if (!data.accessToken || !data.refreshToken) {
+    throw new Error("Resposta de auth inválida")
+  }
+  setTokens(data.accessToken, data.refreshToken)
+  return fetchMe()
 }
 
-function setSession(user: AuthUser) {
-  localStorage.setItem(
-    SESSION_KEY,
-    JSON.stringify({ name: user.name, email: user.email })
+export async function login(
+  email: string,
+  password: string
+): Promise<AuthUser> {
+  const res = await fetch(apiUrl("/auth/login"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: email.trim().toLowerCase(),
+      password,
+    }),
+  })
+  if (!res.ok) {
+    throw new Error(await readApiError(res))
+  }
+  return acceptTokensAndFetchMe(
+    (await res.json()) as {
+      accessToken?: string
+      refreshToken?: string
+    }
   )
 }
 
-export function login(email: string, password: string): AuthUser {
-  const normalized = email.trim().toLowerCase()
-  const user = readUsers().find((u) => u.email === normalized)
-  if (!user || user.password !== password) {
-    throw new Error("E-mail ou senha inválidos")
-  }
-  const session = { name: user.name, email: user.email }
-  setSession(session)
-  return session
-}
-
-export function signup(
+export async function signup(
   name: string,
   email: string,
   password: string
-): AuthUser {
-  const normalized = email.trim().toLowerCase()
-  const trimmedName = name.trim()
-  if (!trimmedName || !normalized || password.length < 4) {
-    throw new Error("Preencha nome, e-mail e senha (mín. 4)")
+): Promise<AuthUser> {
+  const res = await fetch(apiUrl("/auth/signup"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      password,
+    }),
+  })
+  if (!res.ok) {
+    throw new Error(await readApiError(res))
   }
-  const users = readUsers()
-  if (users.some((u) => u.email === normalized)) {
-    throw new Error("Já existe conta com esse e-mail")
-  }
-  const account: StoredAccount = {
-    name: trimmedName,
-    email: normalized,
-    password,
-  }
-  writeUsers([...users, account])
-  const session = { name: account.name, email: account.email }
-  setSession(session)
-  return session
+  return acceptTokensAndFetchMe(
+    (await res.json()) as {
+      accessToken?: string
+      refreshToken?: string
+    }
+  )
 }
 
-const RESET_KEY = "cbd-reset"
-
-// ponytail: mock OTP always 123456 — real email later
-export function requestPasswordReset(email: string) {
+export async function requestPasswordReset(email: string) {
   const normalized = email.trim().toLowerCase()
   if (!normalized.includes("@")) {
     throw new Error("Informe um e-mail válido")
   }
-  localStorage.setItem(
-    RESET_KEY,
-    JSON.stringify({ email: normalized, code: "123456" })
-  )
+  const res = await fetch(apiUrl("/auth/password/forgot"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: normalized }),
+  })
+  if (!res.ok) {
+    throw new Error(await readApiError(res))
+  }
   return normalized
 }
 
-export function verifyResetCode(email: string, code: string) {
+export async function verifyResetCode(email: string, code: string) {
   const normalized = email.trim().toLowerCase()
-  const raw = localStorage.getItem(RESET_KEY)
-  if (!raw) throw new Error("Código expirado. Peça outro.")
-  let data: { email: string; code: string }
-  try {
-    data = JSON.parse(raw) as { email: string; code: string }
-  } catch {
-    throw new Error("Código expirado. Peça outro.")
-  }
-  if (data.email !== normalized || data.code !== code.trim()) {
+  const trimmed = code.trim()
+  if (!/^\d{6}$/.test(trimmed)) {
     throw new Error("Código inválido")
+  }
+  const res = await fetch(apiUrl("/auth/password/verify-otp"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: normalized, code: trimmed }),
+  })
+  if (!res.ok) {
+    throw new Error(await readApiError(res))
   }
 }
 
-export function resetPassword(email: string, password: string) {
+export async function resetPassword(
+  email: string,
+  code: string,
+  password: string
+) {
   const normalized = email.trim().toLowerCase()
+  const trimmed = code.trim()
   if (password.length < 4) throw new Error("Senha mín. 4 caracteres")
-  const users = readUsers()
-  const idx = users.findIndex((u) => u.email === normalized)
-  if (idx === -1) throw new Error("Conta não encontrada")
-  users[idx] = { ...users[idx], password }
-  writeUsers(users)
-  localStorage.removeItem(RESET_KEY)
+  if (!/^\d{6}$/.test(trimmed)) throw new Error("Código inválido")
+
+  const res = await fetch(apiUrl("/auth/password/reset"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: normalized,
+      code: trimmed,
+      password,
+    }),
+  })
+  if (!res.ok) {
+    throw new Error(await readApiError(res))
+  }
 }

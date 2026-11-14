@@ -112,32 +112,33 @@ export function AuthScreen({ onAuth }: AuthScreenProps) {
     setShowErrors(false)
     setOtpInvalid(false)
     setBusy(true)
-    await new Promise((r) => setTimeout(r, 450))
     try {
       if (mode === "login") {
-        onAuth(login(email, password))
+        const user = await login(email, password)
+        onAuth(user)
         toast.add({ title: "Bem-vindo de volta" })
         return
       }
       if (mode === "signup") {
-        onAuth(signup(name, email, password))
+        const user = await signup(name, email, password)
+        onAuth(user)
         toast.add({ title: "Conta criada" })
         return
       }
       if (mode === "forgot") {
-        requestPasswordReset(email)
+        await requestPasswordReset(email)
         toast.add({ title: "Código enviado" })
         setOtp("")
         setMode("otp")
         return
       }
       if (mode === "otp") {
-        verifyResetCode(email, otp)
+        await verifyResetCode(email, otp)
         setPassword("")
         setMode("reset")
         return
       }
-      resetPassword(email, password)
+      await resetPassword(email, otp, password)
       toast.add({ title: "Senha atualizada" })
       setMode("login")
       setPassword("")
@@ -266,7 +267,6 @@ export function AuthScreen({ onAuth }: AuthScreenProps) {
                 <InputOTPSlot index={5} aria-invalid={otpInvalid || undefined} />
               </InputOTPGroup>
             </InputOTP>
-            <p className="text-xs text-muted-foreground">Demo: use 123456</p>
           </div>
         )}
 
@@ -338,9 +338,9 @@ export function AuthScreen({ onAuth }: AuthScreenProps) {
                 <button
                   type="button"
                   className="font-medium text-foreground underline-offset-2 hover:underline"
-                  onClick={() => {
+                  onClick={async () => {
                     try {
-                      requestPasswordReset(email)
+                      await requestPasswordReset(email)
                       setOtp("")
                       setOtpInvalid(false)
                       toast.add({ title: "Código reenviado" })
