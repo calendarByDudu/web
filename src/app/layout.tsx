@@ -4,6 +4,7 @@ import {
   ThemeProvider,
   themeInitScript,
 } from "@/components/theme-provider"
+import { PwaRegister } from "@/components/pwa-register"
 import { Toaster } from "@/components/ui/toast"
 import "./globals.css"
 
@@ -21,13 +22,19 @@ export const metadata: Metadata = {
   title: "calendarByDudu",
   description: "Mobile-first calendar app",
   icons: {
-    icon: "/logo.svg",
-    apple: "/logo.svg",
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "calendarByDudu",
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
   },
   formatDetection: {
     telephone: false,
@@ -56,6 +63,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="min-h-dvh">
         <ThemeProvider>
+          <PwaRegister />
           <Toaster timeout={3000}>
             <div className="app-shell mx-auto flex min-h-dvh w-full max-w-[430px] flex-col bg-background">
               {children}
