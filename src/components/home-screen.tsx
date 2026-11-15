@@ -16,17 +16,20 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { toast } from "@/components/ui/toast"
 import {
-  EVENT_OWNER_SELF,
-  MOCK_EVENTS,
   canManageEvent,
   eventDayKey,
   eventsByDay,
   formatEventWhen,
+  listEvents,
   type CalendarEvent,
   type EventAudience,
 } from "@/lib/events"
-import type { AuthUser } from "@/lib/auth"
-import { getPartner, type CouplePartner } from "@/lib/couple"
+import { getSessionUserId, type AuthUser } from "@/lib/auth"
+import {
+  getCouple,
+  type CouplePartner,
+  type CoupleStats,
+} from "@/lib/couple"
 import { addDays, dayKey, startOfWeek } from "@/lib/dates"
 
 function formatHeader(d: Date) {
@@ -83,22 +86,14 @@ function EventList({
 export function HomeScreen({
   user,
   onLogout,
-  initialEvents = MOCK_EVENTS,
 }: {
   user: AuthUser
   onLogout: () => void
-  initialEvents?: CalendarEvent[]
 }) {
   const today = useMemo(() => new Date(), [])
   const [tab, setTab] = useState<BottomTab>("home")
   const [selected, setSelected] = useState(() => new Date(today))
-  const [events, setEvents] = useState(() =>
-    initialEvents.map((e) =>
-      e.createdBy === EVENT_OWNER_SELF
-        ? { ...e, createdBy: user.email.trim().toLowerCase() }
-        : e
-    )
-  )
+  const [events, setEvents] = useState<CalendarEvent[]>([])
   const [audienceFilter, setAudienceFilter] =
     useState<EventAudience>("couple")
   const [addOpen, setAddOpen] = useState(false)
@@ -106,16 +101,65 @@ export function HomeScreen({
   const [detail, setDetail] = useState<CalendarEvent | null>(null)
   const [coupleOpen, setCoupleOpen] = useState(false)
   const [partner, setPartner] = useState<CouplePartner | null>(null)
+  const [coupleStats, setCoupleStats] = useState<CoupleStats | null>(null)
+  const [coupleFetched, setCoupleFetched] = useState(false)
 
   useEffect(() => {
-    setPartner(getPartner(user.email))
-  }, [user.email])
+    let cancelled = false
+    setCoupleFetched(false)
+    ;(async () => {
+      try {
+        const status = await getCouple(user.id)
+        if (cancelled) return
+        setPartner(status.partner)
+        setCoupleStats(status.stats ?? null)
+      } catch {
+        if (cancelled) return
+        setPartner(null)
+        setCoupleStats(null)
+      } finally {
+        if (!cancelled) setCoupleFetched(true)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [user.email, user.id])
 
-  const visibleEvents = useMemo(
-    () => events.filter((e) => e.audience === audienceFilter),
-    [events, audienceFilter]
-  )
-  const byDay = useMemo(() => eventsByDay(visibleEvents), [visibleEvents])
+  const rangeFrom = useMemo(() => {
+    // mês anterior → mês seguinte (cobre week strip + month calendar)
+    return dayKey(new Date(selected.getFullYear(), selected.getMonth() - 1, 1))
+  }, [selected])
+  const rangeTo = useMemo(() => {
+    return dayKey(new Date(selected.getFullYear(), selected.getMonth() + 2, 0))
+  }, [selected])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const items = await listEvents({
+          audience: audienceFilter,
+          from: rangeFrom,
+          to: rangeTo,
+        })
+        if (!cancelled) setEvents(items)
+      } catch (err) {
+        if (cancelled) return
+        toast.add({
+          type: "error",
+          title:
+            err instanceof Error ? err.message : "Erro ao carregar eventos",
+          timeout: 4000,
+        })
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [audienceFilter, rangeFrom, rangeTo])
+
+  const byDay = useMemo(() => eventsByDay(events), [events])
   const daysWithEvents = useMemo(() => new Set(byDay.keys()), [byDay])
   const selectedEvents = byDay.get(dayKey(selected)) ?? []
   const timedEvents = selectedEvents.filter((e) => !e.allDay)
@@ -154,8 +198,10 @@ export function HomeScreen({
     })
   }
 
+  const sessionUserId = getSessionUserId() ?? user.id
+
   function handleDelete(event: CalendarEvent) {
-    if (!canManageEvent(event, user.email)) return
+    if (!canManageEvent(event, sessionUserId)) return
     setEvents((prev) => prev.filter((e) => e.id !== event.id))
     setDetail(null)
     toast.add({
@@ -167,7 +213,7 @@ export function HomeScreen({
   }
 
   function handleEdit(event: CalendarEvent) {
-    if (!canManageEvent(event, user.email)) return
+    if (!canManageEvent(event, sessionUserId)) return
     setDetail(null)
     setEditing(event)
     setAddOpen(true)
@@ -268,7 +314,7 @@ export function HomeScreen({
           <ScrollArea className="min-h-0 flex-1">
             <div className="pb-28">
               <MonthCalendar
-                events={visibleEvents}
+                events={events}
                 onSelectEvent={(ev) => setDetail(ev)}
               />
             </div>
@@ -281,6 +327,10 @@ export function HomeScreen({
           name={user.name}
           email={user.email}
           partnerName={partner?.name ?? null}
+          hasCouple={
+            Boolean(partner) ||
+            (!coupleFetched && Boolean(user.coupleId))
+          }
           onCouple={() => setCoupleOpen(true)}
           onLogout={onLogout}
         />
@@ -298,7 +348,7 @@ export function HomeScreen({
       <EventDetailDrawer
         event={detail}
         open={Boolean(detail)}
-        userEmail={user.email}
+        userId={sessionUserId}
         onOpenChange={(open) => {
           if (!open) setDetail(null)
         }}
@@ -309,7 +359,6 @@ export function HomeScreen({
       <AddEventDrawer
         open={addOpen}
         defaultDate={selected}
-        userEmail={user.email}
         event={editing}
         onOpenChange={(open) => {
           setAddOpen(open)
@@ -323,7 +372,10 @@ export function HomeScreen({
         onOpenChange={setCoupleOpen}
         user={user}
         events={events}
+        initialPartner={partner}
+        initialStats={coupleStats}
         onPartnerChange={setPartner}
+        onStatsChange={setCoupleStats}
       />
     </div>
   )

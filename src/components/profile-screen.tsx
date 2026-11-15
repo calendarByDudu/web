@@ -20,6 +20,7 @@ type ProfileScreenProps = {
   name: string
   email: string
   partnerName?: string | null
+  hasCouple?: boolean
   onCouple: () => void
   onLogout: () => void
 }
@@ -28,6 +29,7 @@ export function ProfileScreen({
   name,
   email,
   partnerName = null,
+  hasCouple = false,
   onCouple,
   onLogout,
 }: ProfileScreenProps) {
@@ -81,8 +83,10 @@ export function ProfileScreen({
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium">Casal</p>
                 <p className="truncate text-sm text-muted-foreground">
-                  {partnerName
-                    ? `Com ${partnerName}`
+                  {hasCouple || partnerName
+                    ? partnerName
+                      ? `Ver casal · ${partnerName}`
+                      : "Ver casal"
                     : "Convide com um código"}
                 </p>
               </div>

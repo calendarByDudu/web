@@ -3,7 +3,7 @@
 import { dayKey, isBeforeDay, sameDay, weekDays } from "@/lib/dates"
 import { cn } from "@/lib/utils"
 
-const DAY_LABEL = ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"] as const
+const DAY_LABEL = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"] as const
 
 type WeekStripProps = {
   selected: Date
@@ -28,7 +28,7 @@ export function WeekStrip({
         const isToday = sameDay(date, today)
         const past = isBeforeDay(date, today)
         const hasEvents = daysWithEvents?.has(key) ?? false
-        const weekday = DAY_LABEL[date.getDay() === 0 ? 6 : date.getDay() - 1]
+        const weekday = DAY_LABEL[date.getDay()]
 
         return (
           <button
