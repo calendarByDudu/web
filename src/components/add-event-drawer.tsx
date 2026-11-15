@@ -22,6 +22,7 @@ import {
   addMinutesToTime,
   createEvent,
   eventDayKey,
+  updateEvent,
   type CalendarEvent,
   type EventAudience,
   type EventCategory,
@@ -32,7 +33,6 @@ import { cn } from "@/lib/utils"
 type AddEventDrawerProps = {
   open: boolean
   defaultDate: Date
-  userEmail: string
   event?: CalendarEvent | null
   onOpenChange: (open: boolean) => void
   onSave: (event: CalendarEvent) => void
@@ -45,7 +45,10 @@ function defaultStartTime() {
 }
 
 function timeFromIso(iso: string) {
-  return iso.slice(11, 16)
+  const d = new Date(iso)
+  const hh = String(d.getHours()).padStart(2, "0")
+  const mm = String(d.getMinutes()).padStart(2, "0")
+  return `${hh}:${mm}`
 }
 
 const fieldClass =
@@ -54,7 +57,6 @@ const fieldClass =
 export function AddEventDrawer({
   open,
   defaultDate,
-  userEmail,
   event = null,
   onOpenChange,
   onSave,
@@ -71,7 +73,6 @@ export function AddEventDrawer({
   const [audience, setAudience] = useState<EventAudience>("couple")
   const [category, setCategory] = useState<EventCategory>("saidinha")
   const [color, setColor] = useState<CalendarEvent["color"]>("blue")
-  const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -93,7 +94,6 @@ export function AddEventDrawer({
       setAudience(event.audience)
       setCategory(event.category)
       setColor(event.color)
-      setError(null)
       return
     }
     const start = defaultStartTime()
@@ -106,7 +106,6 @@ export function AddEventDrawer({
     setAudience("couple")
     setCategory("saidinha")
     setColor("blue")
-    setError(null)
   }, [open, defaultDate, event])
 
   const canSave = Boolean(title.trim() && date)
@@ -141,31 +140,46 @@ export function AddEventDrawer({
       return
     }
     if (!allDay && endTime <= startTime) {
-      setError("Fim precisa ser depois do início")
+      toast.add({
+        type: "error",
+        title: "Fim precisa ser depois do início",
+        timeout: 3000,
+      })
       return
     }
     setSaving(true)
-    // ponytail: fake wait until real API exists
-    await new Promise((r) => setTimeout(r, 600))
-    onSave(
-      createEvent(
-        {
-          title,
-          date,
-          startTime,
-          endTime,
-          allDay,
-          notes,
-          audience,
-          category,
-          color,
-          createdBy: event?.createdBy ?? userEmail.trim().toLowerCase(),
-        },
-        event?.id
-      )
-    )
-    setSaving(false)
-    onOpenChange(false)
+    const form = {
+      title,
+      date,
+      startTime,
+      endTime,
+      allDay,
+      notes,
+      audience,
+      category,
+      color,
+    }
+    try {
+      const saved =
+        isEdit && event
+          ? await updateEvent(event.id, form, event)
+          : await createEvent(form)
+      onSave(saved)
+      onOpenChange(false)
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Não foi possível salvar"
+      toast.add({
+        type: "error",
+        title:
+          message === "Failed to fetch"
+            ? "Não foi possível salvar. Tente de novo."
+            : message,
+        timeout: 4000,
+      })
+    } finally {
+      setSaving(false)
+    }
   }
 
   function handleSaveClick(e: React.MouseEvent<HTMLButtonElement>) {
@@ -295,10 +309,7 @@ export function AddEventDrawer({
             </div>
             <Switch
               checked={allDay}
-              onCheckedChange={(checked) => {
-                setAllDay(checked)
-                setError(null)
-              }}
+              onCheckedChange={setAllDay}
             />
           </div>
 
@@ -322,19 +333,12 @@ export function AddEventDrawer({
                 <input
                   type="time"
                   value={endTime}
-                  onChange={(e) => {
-                    setEndTime(e.target.value)
-                    setError(null)
-                  }}
+                  onChange={(e) => setEndTime(e.target.value)}
                   className={cn(fieldClass, "appearance-none")}
                 />
               </label>
             </div>
           )}
-
-          {error ? (
-            <p className="text-sm text-destructive">{error}</p>
-          ) : null}
 
           <label className="block space-y-2">
             <span className="text-sm font-medium text-muted-foreground">

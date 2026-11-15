@@ -13,11 +13,14 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer"
 import { Spinner } from "@/components/ui/spinner"
+import { toast } from "@/components/ui/toast"
+import { getSessionUserId } from "@/lib/auth"
 import {
   EVENT_AUDIENCE_LABEL,
   EVENT_CATEGORY_LABEL,
   EVENT_SOFT_DOT,
   canManageEvent,
+  deleteEvent,
   formatEventDate,
   formatEventWhen,
   type CalendarEvent,
@@ -27,7 +30,7 @@ import { cn } from "@/lib/utils"
 type EventDetailDrawerProps = {
   event: CalendarEvent | null
   open: boolean
-  userEmail: string
+  userId: string
   onOpenChange: (open: boolean) => void
   onEdit: (event: CalendarEvent) => void
   onDelete: (event: CalendarEvent) => void
@@ -36,14 +39,15 @@ type EventDetailDrawerProps = {
 export function EventDetailDrawer({
   event,
   open,
-  userEmail,
+  userId,
   onOpenChange,
   onEdit,
   onDelete,
 }: EventDetailDrawerProps) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const canManage = event ? canManageEvent(event, userEmail) : false
+  const sessionUserId = getSessionUserId() ?? userId
+  const canManage = event ? canManageEvent(event, sessionUserId) : false
 
   useEffect(() => {
     if (!open) {
@@ -59,11 +63,22 @@ export function EventDetailDrawer({
   async function confirmDelete() {
     if (!event || deleting) return
     setDeleting(true)
-    // ponytail: fake wait until real API exists
-    await new Promise((r) => setTimeout(r, 600))
-    setConfirmOpen(false)
-    onDelete(event)
-    setDeleting(false)
+    try {
+      await deleteEvent(event.id)
+      setConfirmOpen(false)
+      onDelete(event)
+    } catch (err) {
+      toast.add({
+        type: "error",
+        title:
+          err instanceof Error
+            ? err.message
+            : "Não foi possível excluir o evento",
+        timeout: 4000,
+      })
+    } finally {
+      setDeleting(false)
+    }
   }
 
   return (
