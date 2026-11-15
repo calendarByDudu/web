@@ -1,3 +1,6 @@
+import { apiFetch } from "@/lib/auth"
+import { dayKey } from "@/lib/dates"
+
 /** Who the event is for — both partners still see every event */
 export type EventAudience = "me" | "couple"
 
@@ -14,19 +17,74 @@ export type EventCategory =
 export type CalendarEvent = {
   id: string
   title: string
-  startsAt: string // ISO local-ish
+  startsAt: string // ISO (API manda UTC com Z)
   endsAt?: string
   allDay?: boolean
   notes?: string
   audience: EventAudience
   category: EventCategory
   color: "blue" | "green" | "amber" | "rose" | "violet"
-  /** Email of who created it — only they edit/delete */
-  createdBy: string
+  /** UUID do criador — só ele edita/deleta */
+  createdById: string
+  coupleId?: string
+  createdAt?: string
+  updatedAt?: string
 }
 
 /** Mock placeholder remapped to the logged-in user on boot */
 export const EVENT_OWNER_SELF = "self"
+
+type ApiEvent = {
+  id: string
+  title: string
+  startsAt: string
+  endsAt?: string | null
+  allDay?: boolean
+  notes?: string | null
+  audience: EventAudience
+  category: EventCategory
+  color: CalendarEvent["color"]
+  createdById?: string
+  createdBy?: string | { id?: string }
+  coupleId?: string | null
+  createdAt?: string
+  updatedAt?: string
+}
+
+function ownerIdFromApi(raw: ApiEvent): string {
+  if (typeof raw.createdById === "string" && raw.createdById) {
+    return raw.createdById
+  }
+  if (typeof raw.createdBy === "string" && raw.createdBy) {
+    return raw.createdBy
+  }
+  if (
+    raw.createdBy &&
+    typeof raw.createdBy === "object" &&
+    typeof raw.createdBy.id === "string"
+  ) {
+    return raw.createdBy.id
+  }
+  return ""
+}
+
+export function normalizeEvent(raw: ApiEvent): CalendarEvent {
+  return {
+    id: raw.id,
+    title: raw.title,
+    startsAt: raw.startsAt,
+    endsAt: raw.endsAt ?? undefined,
+    allDay: Boolean(raw.allDay),
+    notes: raw.notes ?? undefined,
+    audience: raw.audience,
+    category: raw.category,
+    color: raw.color,
+    createdById: ownerIdFromApi(raw),
+    coupleId: raw.coupleId ?? undefined,
+    createdAt: raw.createdAt,
+    updatedAt: raw.updatedAt,
+  }
+}
 
 export const EVENT_AUDIENCE_LABEL: Record<EventAudience, string> = {
   me: "Só eu",
@@ -66,7 +124,7 @@ export const MOCK_EVENTS: CalendarEvent[] = [
     audience: "me",
     category: "saude",
     color: "blue",
-    createdBy: EVENT_OWNER_SELF,
+    createdById: EVENT_OWNER_SELF,
   },
   {
     id: "2",
@@ -77,7 +135,7 @@ export const MOCK_EVENTS: CalendarEvent[] = [
     audience: "couple",
     category: "restaurante",
     color: "rose",
-    createdBy: EVENT_OWNER_SELF,
+    createdById: EVENT_OWNER_SELF,
   },
   {
     id: "3",
@@ -87,7 +145,7 @@ export const MOCK_EVENTS: CalendarEvent[] = [
     audience: "couple",
     category: "casa",
     color: "green",
-    createdBy: "parceiro@exemplo.com",
+    createdById: "partner",
   },
   {
     id: "4",
@@ -98,7 +156,7 @@ export const MOCK_EVENTS: CalendarEvent[] = [
     audience: "couple",
     category: "trabalho",
     color: "amber",
-    createdBy: EVENT_OWNER_SELF,
+    createdById: EVENT_OWNER_SELF,
   },
   {
     id: "5",
@@ -109,7 +167,7 @@ export const MOCK_EVENTS: CalendarEvent[] = [
     audience: "couple",
     category: "aniversario",
     color: "violet",
-    createdBy: "parceiro@exemplo.com",
+    createdById: "partner",
   },
   {
     id: "6",
@@ -120,7 +178,7 @@ export const MOCK_EVENTS: CalendarEvent[] = [
     audience: "me",
     category: "saude",
     color: "blue",
-    createdBy: EVENT_OWNER_SELF,
+    createdById: EVENT_OWNER_SELF,
   },
   {
     id: "7",
@@ -130,7 +188,7 @@ export const MOCK_EVENTS: CalendarEvent[] = [
     audience: "couple",
     category: "saidinha",
     color: "violet",
-    createdBy: EVENT_OWNER_SELF,
+    createdById: EVENT_OWNER_SELF,
   },
 ]
 
@@ -168,7 +226,7 @@ export const EVENT_COLORS = [
 ] as const satisfies readonly CalendarEvent["color"][]
 
 export function eventDayKey(iso: string) {
-  return iso.slice(0, 10)
+  return dayKey(new Date(iso))
 }
 
 function formatClock(iso: string) {
@@ -203,53 +261,176 @@ export function formatEventDate(event: CalendarEvent) {
   })
 }
 
-export function createEvent(
-  input: {
-    title: string
-    date: string // yyyy-mm-dd
-    startTime: string // HH:mm
-    endTime: string // HH:mm
-    allDay?: boolean
-    notes?: string
-    audience: EventAudience
-    category: EventCategory
-    color: CalendarEvent["color"]
-    createdBy: string
-  },
-  id = crypto.randomUUID()
-): CalendarEvent {
-  const title = input.title.trim()
-  const notes = input.notes?.trim()
+export type ListEventsParams = {
+  audience?: EventAudience
+  from?: string // yyyy-MM-dd
+  to?: string // yyyy-MM-dd
+}
+
+async function readEventsApiError(
+  res: Response,
+  fallback: string
+): Promise<string> {
+  try {
+    const body = (await res.json()) as { error?: { message?: string } }
+    if (body.error?.message) return body.error.message
+  } catch {
+    // ignore
+  }
+  return fallback
+}
+
+export async function listEvents(
+  params: ListEventsParams = {}
+): Promise<CalendarEvent[]> {
+  const q = new URLSearchParams()
+  if (params.audience) q.set("audience", params.audience)
+  if (params.from) q.set("from", params.from)
+  if (params.to) q.set("to", params.to)
+  const qs = q.toString()
+  const res = await apiFetch(`/events${qs ? `?${qs}` : ""}`)
+  if (!res.ok) {
+    throw new Error(
+      await readEventsApiError(res, "Não foi possível carregar eventos")
+    )
+  }
+  const data = (await res.json()) as { items?: ApiEvent[] } | ApiEvent[]
+  const items = Array.isArray(data)
+    ? data
+    : Array.isArray(data.items)
+      ? data.items
+      : []
+  return items.map(normalizeEvent)
+}
+
+export type EventFormInput = {
+  title: string
+  date: string // yyyy-mm-dd
+  startTime: string // HH:mm
+  endTime: string // HH:mm
+  allDay?: boolean
+  notes?: string
+  audience: EventAudience
+  category: EventCategory
+  color: CalendarEvent["color"]
+}
+
+function clockFromIso(iso: string) {
+  const d = new Date(iso)
+  const hh = String(d.getHours()).padStart(2, "0")
+  const mm = String(d.getMinutes()).padStart(2, "0")
+  return `${hh}:${mm}`
+}
+
+/** Write format: ISO local sem timezone (contrato OpenAPI). */
+function formToStartsEnds(input: EventFormInput) {
   if (input.allDay) {
     return {
-      id,
-      title,
       startsAt: `${input.date}T00:00:00`,
       endsAt: `${input.date}T23:59:59`,
-      allDay: true,
+      allDay: true as const,
+    }
+  }
+  return {
+    startsAt: `${input.date}T${input.startTime}:00`,
+    endsAt: `${input.date}T${input.endTime}:00`,
+    allDay: false as const,
+  }
+}
+
+function isScheduleChanged(
+  input: EventFormInput,
+  previous: CalendarEvent
+): boolean {
+  if (Boolean(input.allDay) !== Boolean(previous.allDay)) return true
+  if (eventDayKey(previous.startsAt) !== input.date) return true
+  if (input.allDay) return false
+  return (
+    clockFromIso(previous.startsAt) !== input.startTime ||
+    clockFromIso(previous.endsAt ?? previous.startsAt) !== input.endTime
+  )
+}
+
+export async function createEvent(
+  input: EventFormInput
+): Promise<CalendarEvent> {
+  const title = input.title.trim()
+  const notes = input.notes?.trim()
+  const range = formToStartsEnds(input)
+  const res = await apiFetch("/events", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      title,
+      startsAt: range.startsAt,
+      endsAt: range.endsAt,
+      allDay: range.allDay,
       notes: notes || undefined,
       audience: input.audience,
       category: input.category,
       color: input.color,
-      createdBy: input.createdBy,
-    }
+    }),
+  })
+  if (!res.ok) {
+    throw new Error(
+      await readEventsApiError(res, "Não foi possível criar o evento")
+    )
   }
-  return {
-    id,
+  return normalizeEvent((await res.json()) as ApiEvent)
+}
+
+export async function updateEvent(
+  eventId: string,
+  input: EventFormInput,
+  previous?: CalendarEvent
+): Promise<CalendarEvent> {
+  const title = input.title.trim()
+  const notes = input.notes?.trim() ?? ""
+  const body: Record<string, unknown> = {
     title,
-    startsAt: `${input.date}T${input.startTime}:00`,
-    endsAt: `${input.date}T${input.endTime}:00`,
-    allDay: false,
-    notes: notes || undefined,
+    notes,
     audience: input.audience,
     category: input.category,
     color: input.color,
-    createdBy: input.createdBy,
+  }
+  // PATCH parcial: não reenviar agenda se não mudou (evita rejeição de all-day/Z)
+  if (!previous || isScheduleChanged(input, previous)) {
+    const range = formToStartsEnds(input)
+    body.startsAt = range.startsAt
+    body.endsAt = range.endsAt
+    body.allDay = range.allDay
+  }
+  const res = await apiFetch(`/events/${eventId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    throw new Error(
+      await readEventsApiError(
+        res,
+        `Não foi possível atualizar o evento (${res.status})`
+      )
+    )
+  }
+  return normalizeEvent((await res.json()) as ApiEvent)
+}
+
+export async function deleteEvent(eventId: string): Promise<void> {
+  const res = await apiFetch(`/events/${eventId}`, { method: "DELETE" })
+  if (!res.ok) {
+    throw new Error(
+      await readEventsApiError(res, "Não foi possível excluir o evento")
+    )
   }
 }
 
-export function canManageEvent(event: CalendarEvent, email: string) {
-  return event.createdBy === email.trim().toLowerCase()
+export function canManageEvent(event: CalendarEvent, userId: string) {
+  const owner = event.createdById?.trim()
+  const me = userId?.trim()
+  // sem dono conhecido → ninguém edita (não liberar por padrão)
+  if (!owner || !me) return false
+  return owner === me
 }
 
 export function eventsByDay(events: CalendarEvent[]) {
