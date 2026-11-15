@@ -322,18 +322,28 @@ function clockFromIso(iso: string) {
   return `${hh}:${mm}`
 }
 
-/** Write format: ISO local sem timezone (contrato OpenAPI). */
+/** RFC 3339 com offset local — Ajv `format: date-time` rejeita sem tz. */
+function toRfc3339Local(date: string, time: string, seconds = "00") {
+  const wall = `${date}T${time}:${seconds}`
+  const offsetMin = -new Date(wall).getTimezoneOffset()
+  const sign = offsetMin >= 0 ? "+" : "-"
+  const abs = Math.abs(offsetMin)
+  const oh = String(Math.floor(abs / 60)).padStart(2, "0")
+  const om = String(abs % 60).padStart(2, "0")
+  return `${wall}${sign}${oh}:${om}`
+}
+
 function formToStartsEnds(input: EventFormInput) {
   if (input.allDay) {
     return {
-      startsAt: `${input.date}T00:00:00`,
-      endsAt: `${input.date}T23:59:59`,
+      startsAt: toRfc3339Local(input.date, "00:00"),
+      endsAt: toRfc3339Local(input.date, "23:59", "59"),
       allDay: true as const,
     }
   }
   return {
-    startsAt: `${input.date}T${input.startTime}:00`,
-    endsAt: `${input.date}T${input.endTime}:00`,
+    startsAt: toRfc3339Local(input.date, input.startTime),
+    endsAt: toRfc3339Local(input.date, input.endTime),
     allDay: false as const,
   }
 }
