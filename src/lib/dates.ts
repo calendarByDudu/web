@@ -17,12 +17,10 @@ export function startOfDay(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate())
 }
 
-/** Monday-start week (pt-BR) */
+/** Sunday-start week (dom → sáb) */
 export function startOfWeek(d: Date) {
   const date = startOfDay(d)
-  const day = date.getDay()
-  const diff = day === 0 ? -6 : 1 - day
-  date.setDate(date.getDate() + diff)
+  date.setDate(date.getDate() - date.getDay())
   return date
 }
 
