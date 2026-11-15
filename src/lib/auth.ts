@@ -1,7 +1,8 @@
 export type AuthUser = {
-  id?: string
+  id: string
   name: string
   email: string
+  coupleId?: string | null
 }
 
 const TOKEN_KEY = "cbd-token"
@@ -41,6 +42,21 @@ function getRefreshToken(): string | null {
 function setTokens(token: string, refreshToken: string) {
   localStorage.setItem(TOKEN_KEY, token)
   localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
+}
+
+/** user id = JWT `sub` (mesmo valor de createdById na API) */
+export function getSessionUserId(): string | null {
+  const token = getToken()
+  if (!token) return null
+  try {
+    const payload = token.split(".")[1]
+    if (!payload) return null
+    const json = atob(payload.replace(/-/g, "+").replace(/_/g, "/"))
+    const data = JSON.parse(json) as { sub?: unknown }
+    return typeof data.sub === "string" && data.sub ? data.sub : null
+  } catch {
+    return null
+  }
 }
 
 export function clearSession() {
@@ -115,11 +131,26 @@ export async function fetchMe(): Promise<AuthUser> {
   if (!res.ok) {
     throw new Error(await readApiError(res))
   }
-  const user = (await res.json()) as AuthUser
-  if (!user?.email || !user?.name) {
+  const body = (await res.json()) as {
+    id?: string
+    userId?: string
+    name?: string
+    email?: string
+    coupleId?: string | null
+  }
+  const id =
+    getSessionUserId() ??
+    (typeof body.id === "string" ? body.id : null) ??
+    (typeof body.userId === "string" ? body.userId : null)
+  if (!id || !body.email || !body.name) {
     throw new Error("Perfil inválido")
   }
-  return user
+  return {
+    id,
+    name: body.name,
+    email: body.email,
+    coupleId: typeof body.coupleId === "string" ? body.coupleId : null,
+  }
 }
 
 /** Boot: tokens locais → /me (com refresh se access expirou). */
